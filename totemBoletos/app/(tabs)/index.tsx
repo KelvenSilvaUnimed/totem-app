@@ -1,17 +1,5 @@
 import React, { useState } from 'react';
-import {
-  SafeAreaView,
-  View,
-  Text,
-  TextInput,
-  Button,
-  StyleSheet,
-  ScrollView,
-  FlatList,
-  ActivityIndicator,
-  Alert,
-  Modal,
-  Pressable,
+import {SafeAreaView,View,Text,TextInput,Button,StyleSheet,ScrollView,FlatList,ActivityIndicator,Alert,Modal,Pressable,
 } from 'react-native';
 import axios from 'axios';
 import Pdf from 'react-native-pdf';
