@@ -1,0 +1,12 @@
+API BUSCA BOLETO PJ:
+
+https://api.unimedpatos.sgusuite.com.br/api/procedure/p_prcssa_dados/0177_busca_dados_fatura_aberto
+
+API GERA BOLETO PJ:
+
+https://api.unimedpatos.sgusuite.com.br/api/procedure/p_prcssa_dados/p_0177_json_busca_boleto
+
+Client Credentials
+Access Token URL: https://api.unimedpatos.sgusuite.com.br/oauth2/token
+Client ID: S31C1YiOUpaHatHT8nyzPXK0CDBXlhfM
+Client SecreT: REMsASUNJXNc6QgBdXomUBly7EYIG5Zi
