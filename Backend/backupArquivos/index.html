@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Consulta de Faturas & Geração de Boleto</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { --bg:#0f172a; --card:#111827; --muted:#cbd5e1; --ok:#22c55e; --warn:#f59e0b; --err:#ef4444; --acc:#38bdf8; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background: var(--bg); color: white; margin:0; padding:24px; }
+    .container { max-width: 1100px; margin: 0 auto; }
+    .card { background: var(--card); border-radius: 14px; padding: 18px; box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+    h1 { margin: 0 0 16px; font-size: 20px; }
+    label { display:block; font-size:14px; color: var(--muted); margin: 12px 0 6px; }
+    input { width:100%; padding:10px 12px; border-radius:10px; border:1px solid #334155; background:#0b1220; color:white; }
+    button { padding:10px 14px; border-radius:10px; border:1px solid #334155; background:#0ea5e9; color:#002133; font-weight:600; cursor:pointer; }
+    button:disabled { opacity:.6; cursor:not-allowed; }
+    .row { display:grid; grid-template-columns: 1fr 1fr; gap:14px; }
+    .mt { margin-top:16px; }
+    .muted { color: var(--muted); font-size: 13px; }
+    .status { padding:10px 12px; border-radius:10px; margin-top:12px; }
+    .ok { background:#052e1a; border:1px solid #14532d; color:#86efac; }
+    .warn { background:#3b2a03; border:1px solid #713f12; color:#fde68a; }
+    .err { background:#3b0b0b; border:1px solid #7f1d1d; color:#fecaca; }
+    table { width:100%; border-collapse: collapse; margin-top: 12px; }
+    th, td { text-align:left; padding:8px 10px; border-bottom:1px solid #1f2937; font-size: 14px; }
+    th { color: #c7d2fe; }
+    .link { color: var(--acc); text-decoration: none; font-weight:600; }
+    .divider { height:1px; background:#1f2937; margin:18px 0; }
+    .small { font-size:12px; }
+    .pill { display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid #334155; background:#0b1220; font-size:12px; color:#cbd5e1; }
+
+    /* Toolbar & Viewer */
+    .toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+    .btn-plain { background:#0b1220; color:#cbd5e1; border:1px solid #334155; }
+    .btn-success { background:#22c55e; color:#072; border-color:#14532d; }
+    .btn-warn { background:#f59e0b; color:#3b1d00; border-color:#713f12; }
+    .btn-view { background:#38bdf8; color:#02233a; border-color:#164e63; }
+    .viewer { margin-top:14px; background:#0b1220; border:1px solid #334155; border-radius:12px; overflow:hidden; }
+    .viewer iframe { width:100%; height:70vh; border:0; background:#0b1220; }
+    .email-box { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .email-box input { max-width: 340px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>🔐 Consulta de Faturas & Geração de Boleto</h1>
+      <p class="muted small">
+        Front chama apenas o <span class="pill">proxy backend</span>. Sem CORS e sem segredo no navegador.
+      </p>
+
+      <!-- Form Identificação -->
+      <div class="row mt">
+        <div>
+          <label>CPF/CNPJ</label>
+          <input id="cpfcnpj" placeholder="Somente números (ex.: 12345678901)" />
+        </div>
+        <div>
+          <label>Nº do contrato</label>
+          <input id="contrato" placeholder="Somente números (ex.: 12345)" />
+        </div>
+      </div>
+      <div class="mt">
+        <button id="btnConsultar">Consultar faturas pendentes</button>
+        <span id="loading" class="muted small" style="margin-left:10px; display:none;">Carregando...</span>
+      </div>
+
+      <div id="msg" class="status mt" style="display:none;"></div>
+
+      <!-- Lista de faturas -->
+      <div id="listaFaturas" class="mt" style="display:none;">
+        <div class="divider"></div>
+        <h2 style="font-size:16px; margin:0 0 10px;">📄 Faturas encontradas</h2>
+        <table id="tabelaFaturas">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Número</th>
+              <th>Vencimento</th>
+              <th>Valor</th>
+              <th>Linha Digitável</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+
+        <!-- Confirmação de continuidade -->
+        <div class="mt">
+          <button id="btnContinuar">Deseja gerar um boleto?</button>
+        </div>
+      </div>
+
+      <!-- Seção gerar boleto -->
+      <div id="secGerar" class="mt" style="display:none;">
+        <div class="divider"></div>
+        <h2 style="font-size:16px; margin:0 0 8px;">🧾 Gerar boleto</h2>
+        <p class="muted small">Digite o número da fatura exato. A lista está logo abaixo.</p>
+        <div class="row">
+          <div>
+            <label>Número da fatura</label>
+            <input id="numeroFatura" placeholder="Ex.: 1362628" />
+          </div>
+        </div>
+        <div class="mt">
+          <button id="btnGerar">Gerar link do boleto (PDF)</button>
+          <span id="loadingBoleto" class="muted small" style="margin-left:10px; display:none;">Gerando...</span>
+        </div>
+
+        <!-- Resultado + Ações -->
+        <div id="resultadoBoleto" class="mt" style="display:none;">
+          <div class="status ok">
+            <strong>Link do PDF</strong>
+            <div class="mt small">
+              <a id="linkBoleto" class="link" href="#" target="_blank" rel="noopener">Abrir/baixar boleto em nova aba</a>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Toolbar de ações -->
+          <div class="toolbar">
+            <button id="btnBaixar" class="btn-success">⬇️ Baixar PDF</button>
+            <button id="btnEnviar" class="btn-warn">✉️ Enviar por e-mail</button>
+            <button id="btnVisualizar" class="btn-view">👁️ Visualizar boleto</button>
+          </div>
+
+          <!-- Campo de e-mail (aparece quando clicar em Enviar) -->
+          <div id="emailArea" class="mt email-box" style="display:none;">
+            <input id="emailDestino" type="email" placeholder="email@dominio.com" />
+            <button id="btnConfirmarEnvio" class="btn-warn">Enviar agora</button>
+            <span id="sending" class="muted small" style="display:none;">Enviando...</span>
+          </div>
+
+          <!-- Visualizador embutido -->
+          <div id="viewer" class="viewer mt" style="display:none;">
+            <iframe id="pdfFrame" title="Boleto PDF"></iframe>
+          </div>
+
+          <div class="small muted mt">Observação: dependendo do navegador e do servidor, a visualização pode abrir em outra aba.</div>
+        </div>
+
+        <!-- Lista (re-exibição) logo abaixo do input -->
+        <div class="mt">
+          <h3 style="font-size:14px; margin:8px 0;">Faturas pendentes</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Número</th>
+                <th>Vencimento</th>
+                <th>Valor</th>
+                <th>Linha Digitável</th>
+              </tr>
+            </thead>
+            <tbody id="tabelaFaturasSec"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // ====== CONFIG DO PROXY ======
+    const API_BASE = 'http://localhost:3000';
+
+    // ====== Helpers ======
+    const el = id => document.getElementById(id);
+    const digits = s => (s || '').replace(/\D/g, '');
+    function showMsg(text, type='ok') {
+      const box = el('msg');
+      box.className = `status mt ${type}`;
+      box.textContent = text;
+      box.style.display = 'block';
+    }
+    function hideMsg() { el('msg').style.display = 'none'; }
+    const isEmail = (s='') => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+
+    async function buscarFaturasFront(cpfCnpj, contrato) {
+      const r = await fetch(`${API_BASE}/api/faturas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cpfCnpj, contrato })
+      });
+      if (!r.ok) {
+        const t = await r.text().catch(()=> '');
+        throw new Error('Falha ao buscar faturas: ' + t);
+      }
+      const data = await r.json();
+      return Array.isArray(data?.content) ? data.content : [];
+    }
+
+    async function buscarBoletoFront(numeroFatura) {
+      const r = await fetch(`${API_BASE}/api/boleto`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ numeroFatura })
+      });
+      if (!r.ok) {
+        const t = await r.text().catch(()=> '');
+        throw new Error('Falha ao gerar boleto: ' + t);
+      }
+      const data = await r.json();
+      return data?.url || null;
+    }
+
+    async function enviarBoletoEmailFront(email, url, numeroFatura) {
+      const r = await fetch(`${API_BASE}/api/send-boleto`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, url, numeroFatura })
+      });
+      if (!r.ok) {
+        const t = await r.text().catch(()=> '');
+        throw new Error('Falha ao enviar e-mail: ' + t);
+      }
+      return r.json().catch(()=> ({}));
+    }
+
+    function renderTabelaFaturas(tbody, faturas) {
+      tbody.innerHTML = '';
+      faturas.forEach((f, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${i+1}</td>
+          <td>${f.numerofatura ?? '-'}</td>
+          <td>${f.vencimentofatura ?? '-'}</td>
+          <td>${f.valorfatura ?? '-'}</td>
+          <td class="small">${f.linhadigitavel ?? '-'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // ====== Estado ======
+    let faturasCache = [];
+    let boletoURL = null;
+    let numeroSelecionado = null;
+
+    // ====== Ações UI ======
+    el('btnConsultar').addEventListener('click', async () => {
+      hideMsg();
+      el('loading').style.display = 'inline';
+
+      const cpfcnpj = el('cpfcnpj').value;
+      const contrato = el('contrato').value;
+
+      if (!digits(cpfcnpj) || !digits(contrato)) {
+        el('loading').style.display = 'none';
+        showMsg('Informe CPF/CNPJ e contrato (somente números).', 'warn');
+        return;
+      }
+
+      try {
+        const faturas = await buscarFaturasFront(cpfcnpj, contrato);
+        faturasCache = faturas;
+
+        if (!faturas.length) {
+          el('listaFaturas').style.display = 'none';
+          el('secGerar').style.display = 'none';
+          showMsg('Nenhuma fatura pendente encontrada para os dados informados.', 'warn');
+          return;
+        }
+
+        renderTabelaFaturas(el('tabelaFaturas').querySelector('tbody'), faturas);
+        el('listaFaturas').style.display = 'block';
+        el('secGerar').style.display = 'none';
+        showMsg('Faturas carregadas com sucesso.', 'ok');
+      } catch (e) {
+        showMsg(e.message || 'Erro inesperado ao consultar faturas.', 'err');
+      } finally {
+        el('loading').style.display = 'none';
+      }
+    });
+
+    el('btnContinuar').addEventListener('click', () => {
+      hideMsg();
+      if (!faturasCache.length) {
+        showMsg('Não há faturas para continuar.', 'warn');
+        return;
+      }
+      renderTabelaFaturas(el('tabelaFaturasSec'), faturasCache);
+      el('secGerar').style.display = 'block';
+    });
+
+    el('btnGerar').addEventListener('click', async () => {
+      hideMsg();
+      el('loadingBoleto').style.display = 'inline';
+      el('resultadoBoleto').style.display = 'none';
+      el('emailArea').style.display = 'none';
+      el('viewer').style.display = 'none';
+
+      const numeroFatura = el('numeroFatura').value.trim();
+      if (!numeroFatura) {
+        el('loadingBoleto').style.display = 'none';
+        showMsg('Digite o número da fatura.', 'warn');
+        return;
+      }
+
+      const existe = faturasCache.some(f => String(f.numerofatura) === String(numeroFatura));
+      if (!existe) {
+        el('loadingBoleto').style.display = 'none';
+        showMsg('O número informado não está na lista de faturas pendentes.', 'warn');
+        return;
+      }
+
+      try {
+        const url = await buscarBoletoFront(numeroFatura);
+        if (!url) {
+          showMsg('Não foi possível obter a URL do boleto para esta fatura.', 'warn');
+          return;
+        }
+        boletoURL = url;
+        numeroSelecionado = numeroFatura;
+
+        el('linkBoleto').href = boletoURL;
+        el('resultadoBoleto').style.display = 'block';
+        showMsg('Boleto gerado com sucesso! Escolha uma ação abaixo.', 'ok');
+      } catch (e) {
+        showMsg(e.message || 'Erro ao gerar boleto.', 'err');
+      } finally {
+        el('loadingBoleto').style.display = 'none';
+      }
+    });
+
+    // ====== Botões da toolbar ======
+    el('btnBaixar').addEventListener('click', () => {
+      hideMsg();
+      if (!boletoURL) return showMsg('Gere o boleto primeiro.', 'warn');
+      const dl = `${API_BASE}/api/pdf-download?url=${encodeURIComponent(boletoURL)}`;
+      window.open(dl, '_blank', 'noopener');
+    });
+
+    el('btnVisualizar').addEventListener('click', () => {
+      hideMsg();
+      if (!boletoURL) return showMsg('Gere o boleto primeiro.', 'warn');
+
+      const proxied = `${API_BASE}/api/pdf?url=${encodeURIComponent(boletoURL)}`;
+      const frame = el('pdfFrame');
+      frame.src = proxied;               // usa o proxy inline
+      el('viewer').style.display = 'block';
+    });
+
+    el('btnEnviar').addEventListener('click', () => {
+      hideMsg();
+      if (!boletoURL) return showMsg('Gere o boleto primeiro.', 'warn');
+      el('emailArea').style.display = 'flex';
+      el('emailDestino').focus();
+    });
+
+    el('btnConfirmarEnvio').addEventListener('click', async () => {
+      hideMsg();
+      if (!boletoURL) return showMsg('Gere o boleto primeiro.', 'warn');
+
+      const email = el('emailDestino').value.trim();
+      if (!isEmail(email)) return showMsg('Informe um e-mail válido.', 'warn');
+
+      try {
+        el('sending').style.display = 'inline';
+        await enviarBoletoEmailFront(email, boletoURL, numeroSelecionado);
+        showMsg('E-mail enviado com sucesso!', 'ok');
+        el('emailArea').style.display = 'none';
+        el('emailDestino').value = '';
+      } catch (e) {
+        showMsg(e.message || 'Falha ao enviar e-mail.', 'err');
+      } finally {
+        el('sending').style.display = 'none';
+      }
+    });
+  </script>
+</body>
+</html>
