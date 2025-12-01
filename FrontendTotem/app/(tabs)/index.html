@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Totem de Autoatendimento - Unimed</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #111827;
+      --muted: #94a3b8;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --err: #ef4444;
+      --primary: #38bdf8;
+      --primary-strong: #0ea5e9;
+      --secondary: #1f2937;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      background: radial-gradient(circle, rgba(15, 23, 42, 0.9), var(--bg));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      color: #f8fafc;
+    }
+
+    .shell {
+      width: 100%;
+      max-width: 720px;
+    }
+
+    .card {
+      background: rgba(17, 24, 39, 0.92);
+      backdrop-filter: blur(6px);
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 18px 45px rgba(2, 6, 23, 0.5);
+      border: 1px solid rgba(148, 163, 184, 0.08);
+    }
+
+    h1 {
+      margin: 0 0 16px;
+      text-align: center;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    p {
+      margin: 10px 0;
+    }
+
+    label {
+      display: block;
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid #334155;
+      background: #0b1220;
+      color: #f8fafc;
+      font-size: 16px;
+    }
+
+    input:focus {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+
+    button {
+      border: none;
+      border-radius: 12px;
+      padding: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 16px;
+      transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.2s ease;
+    }
+
+    button.primary {
+      background: linear-gradient(135deg, var(--primary-strong), var(--primary));
+      color: #082f49;
+      box-shadow: 0 10px 20px rgba(56, 189, 248, 0.2);
+    }
+
+    button.secondary {
+      background: var(--secondary);
+      color: #e2e8f0;
+      border: 1px solid #334155;
+    }
+
+    button.link {
+      background: transparent;
+      color: var(--primary);
+      padding: 0;
+      text-decoration: underline;
+    }
+
+    button.action {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #e0f2fe;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 14px;
+      min-height: 50px;
+    }
+
+    button.action:hover {
+      background: rgba(15, 23, 42, 0.95);
+      border-color: rgba(56, 189, 248, 0.5);
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    button:not(:disabled):active {
+      transform: scale(0.98);
+    }
+
+    .button-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .actions-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .faturas-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .fatura-btn {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #e0f2fe;
+      text-align: left;
+      padding: 16px;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .fatura-btn:hover {
+      background: rgba(15, 23, 42, 0.95);
+      border-color: rgba(56, 189, 248, 0.5);
+    }
+
+    .fatura-btn.active {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: var(--primary);
+    }
+
+    .fatura-btn span {
+      display: block;
+      font-size: 14px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .step {
+      display: none;
+      margin-top: 10px;
+    }
+
+    .step.active {
+      display: block;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .status {
+      margin-top: 18px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      text-align: center;
+      display: none;
+    }
+
+    .status.ok {
+      background: rgba(5, 46, 22, 0.8);
+      border: 1px solid rgba(34, 197, 94, 0.8);
+      color: #bbf7d0;
+    }
+
+    .status.warn {
+      background: rgba(63, 20, 5, 0.8);
+      border: 1px solid rgba(245, 158, 11, 0.8);
+      color: #fde68a;
+    }
+
+    .status.err {
+      background: rgba(62, 12, 17, 0.82);
+      border: 1px solid rgba(239, 68, 68, 0.8);
+      color: #fecaca;
+    }
+
+    .loading {
+      margin-top: 14px;
+      font-size: 13px;
+      color: var(--muted);
+      display: none;
+      text-align: center;
+    }
+
+    .loading::after {
+      content: '';
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid rgba(148, 163, 184, 0.3);
+      border-top-color: var(--primary);
+      margin-left: 8px;
+      animation: spin 1s linear infinite;
+      vertical-align: middle;
+    }
+
+    .pdf-preview {
+      margin-top: 24px;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      background: rgba(8, 17, 31, 0.9);
+      display: none;
+    }
+
+    .pdf-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(56, 189, 248, 0.35);
+      font-size: 14px;
+      background: rgba(15, 23, 42, 0.8);
+    }
+
+    .pdf-container {
+      width: 100%;
+      min-height: 200px;
+      background: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .pdf-info {
+      text-align: center;
+      color: #374151;
+    }
+
+    .pdf-info .icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .pdf-actions {
+      padding: 16px;
+      border-top: 1px solid rgba(56, 189, 248, 0.35);
+      background: rgba(15, 23, 42, 0.8);
+    }
+
+    /* Modal para visualização do PDF */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 1000;
+      backdrop-filter: blur(5px);
+    }
+
+    .modal-content {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 90%;
+      height: 90%;
+      background: white;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      background: var(--primary);
+      color: white;
+      font-weight: 600;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 0;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-body {
+      width: 100%;
+      height: calc(100% - 60px);
+      background: #f8fafc;
+    }
+
+    .modal-frame {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: white;
+    }
+
+    .pdf-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #f8fafc;
+      color: #64748b;
+      font-size: 16px;
+    }
+
+    .pdf-error {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #fef2f2;
+      color: #dc2626;
+      font-size: 16px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @media (max-width: 540px) {
+      .card {
+        padding: 22px;
+      }
+
+      h1 {
+        font-size: 20px;
+      }
+
+      button {
+        font-size: 15px;
+      }
+
+      .actions-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .pdf-container {
+        min-height: 150px;
+        padding: 15px;
+      }
+
+      .modal-content {
+        width: 95%;
+        height: 95%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="card">
+      <h1>Totem de Autoatendimento</h1>
+
+      <section id="step-cpf" class="step active">
+        <p class="muted">Digite seu CPF para iniciar o atendimento.</p>
+        <label for="cpf">CPF do beneficiario</label>
+        <input id="cpf" type="tel" autocomplete="off" placeholder="Somente numeros" />
+        <div class="button-grid">
+          <button id="btn-validar-cpf" class="primary" type="button">Avancar</button>
+        </div>
+      </section>
+
+      <section id="step-servicos" class="step">
+        <p class="muted">
+          Ola <strong id="beneficiario-nome"></strong>, identificamos seu plano como
+          <strong id="beneficiario-plano"></strong>.
+        </p>
+        <p class="muted">Qual servico deseja realizar hoje?</p>
+        <div class="button-grid">
+          <button data-servico="boletos" class="primary" type="button">Emissao de 2a via de boletos</button>
+          <button data-servico="guias" class="secondary" type="button" data-lock="true" disabled>Guias (em desenvolvimento)</button>
+          <button data-servico="consultas" class="secondary" type="button" data-lock="true" disabled>Consultas (em desenvolvimento)</button>
+        </div>
+        <div class="button-grid" style="margin-top: 12px;">
+          <button id="btn-trocar-cpf" class="link" type="button">Nao e voce? Digitar outro CPF</button>
+        </div>
+      </section>
+
+      <section id="step-contrato" class="step">
+        <p class="muted">
+          Por se tratar de um contrato PJ, informe o CNPJ e depois o numero do contrato para localizar suas faturas em aberto.
+        </p>
+        <label for="cnpj">CNPJ</label>
+        <input id="cnpj" type="tel" autocomplete="off" placeholder="Digite o CNPJ (somente numeros)" />
+        <div id="contrato-group" style="display:none; margin-top:12px;">
+          <label for="contrato">Numero do contrato</label>
+          <input id="contrato" type="tel" autocomplete="off" placeholder="Digite o numero do contrato" />
+        </div>
+        <div class="button-grid">
+          <button id="btn-carregar-faturas" class="primary" type="button">Buscar faturas</button>
+          <button id="btn-voltar-servicos" class="secondary" type="button">Voltar</button>
+        </div>
+      </section>
+
+      <section id="step-faturas" class="step">
+        <h2 style="margin: 0;">Faturas em aberto</h2>
+        <p id="resumo-faturas" class="muted"></p>
+        <div id="lista-faturas" class="faturas-grid"></div>
+        <p class="muted" id="texto-instrucao"></p>
+
+        <div class="pdf-preview" id="pdf-preview">
+          <div class="pdf-header">
+            <span id="pdf-legenda">Selecione uma fatura para visualizar as opções</span>
+          </div>
+          <div class="pdf-container" id="pdf-container">
+            <div class="pdf-info">
+              <div class="icon">📄</div>
+              <div><strong>Nenhuma fatura selecionada</strong></div>
+              <div style="font-size: 14px; margin-top: 8px;">Clique em uma fatura acima para ver as opções disponíveis</div>
+            </div>
+          </div>
+          <div class="pdf-actions" id="pdf-actions" style="display: none;">
+            <div class="actions-grid">
+              <button id="btn-visualizar-boleto" class="action" type="button" disabled>
+                <span>👁️</span> Visualizar Boleto
+              </button>
+              <button id="btn-enviar-email" class="action" type="button" disabled>
+                <span>📧</span> Enviar por Email
+              </button>
+              <button id="btn-enviar-whatsapp" class="action" type="button" disabled>
+                <span>💬</span> WhatsApp
+              </button>
+              <button id="btn-imprimir-pdf" class="action" type="button" disabled>
+                <span>🖨️</span> Imprimir PDF
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="button-grid" style="margin-top: 16px;">
+          <button id="btn-novo-documento" class="secondary" type="button">Consultar novo CPF/CNPJ</button>
+        </div>
+      </section>
+
+      <div id="status" class="status"></div>
+      <div id="loading" class="loading">Carregando</div>
+    </section>
+  </main>
+
+  <!-- Modal para visualização do PDF -->
+  <div id="pdf-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span id="modal-title">Visualizando Boleto</span>
+        <button id="modal-close" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <iframe id="modal-frame" class="modal-frame" title="Visualização do Boleto"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.bundle.js"></script> 
+</body>
+</html>
