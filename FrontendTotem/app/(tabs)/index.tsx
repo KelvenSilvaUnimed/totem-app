@@ -498,22 +498,26 @@ export default function TotemHomeScreen() {
     );
   };
 
+  // Calcula escala baseada na largura da tela (referência: 1920px)
+  const baseWidth = 1920;
+  const scale = screenWidth / baseWidth;
+  const decorativeWidth = 1920 * scale;
+  const decorativeHeight = 1080 * scale;
+
   return (
     <View style={styles.backgroundLayer}>
       <View style={styles.backgroundBase} />
       <Image source={HERO_BACKGROUND} style={styles.backgroundOverlay} resizeMode="cover" />
-      <Image
-        source={HERO_BACKGROUND_OVERLAY}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: screenWidth,
-          height: screenHeight,
-          zIndex: 1.5,
-        }}
-        resizeMode="contain"
-      />
+      <View style={styles.decorativeLayer} pointerEvents="none">
+        <Image
+          source={HERO_BACKGROUND_OVERLAY}
+          style={{
+            width: decorativeWidth,
+            height: decorativeHeight,
+          }}
+          resizeMode="contain"
+        />
+      </View>
       {renderMainContent()}
     </View>
 >>>>>>> origin/master

@@ -54,15 +54,20 @@ const styles = StyleSheet.create({
     left: 0,
     zIndex: 1,
   },
-  heroDecorativeImage: {
+  decorativeLayer: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
+    zIndex: 1.5,
+    overflow: 'hidden',
+  },
+  decorativeImage: {
+    flex: 1,
     width: '100%',
     height: '100%',
-    zIndex: 1.5,
+    aspectRatio: 1.33,
   },
   safeArea: {
     flex: 1,
