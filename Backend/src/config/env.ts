@@ -33,8 +33,8 @@ PORT: z.coerce.number().int().positive().default(3000),
 JWT_SECRET: z.string().min(10).default('change-me-please'),
 
 
-// Endpoint Pessoas — campo do documento no payload
-PESSOAS_DOC_FIELD: z.string().default('documento'),
+// Endpoint Pessoas – campo do documento no payload
+PESSOAS_DOC_FIELD: z.string().default('cpf'),
 MOCK_PESSOAS: z
 .string()
 .default('false')

@@ -4,7 +4,7 @@ import { getToken } from './token.js';
 import { onlyDigits } from '../utils/strings.js';
 
 const API_PESSOAS =
-  'https://api.unimedpatos.sgusuite.com.br/api/procedure/p_prcssa_dados/0177-consulta-dados-pessoas';
+  'https://api.unimedpatos.sgusuite.com.br/api/procedure/p_prcssa_dados/0177-valida-nome-benef';
 
 export type PessoaRecord = {
   carteirinha?: string;
@@ -34,6 +34,23 @@ function gerarMockPessoa(documento: string): PessoaRecord {
   };
 }
 
+function toIsoDate(dateStr?: string) {
+  if (!dateStr) return undefined;
+  const parts = dateStr.split('/');
+  if (parts.length === 3) {
+    const [dd, mm, yyyy] = parts;
+    if (dd && mm && yyyy) {
+      return `${yyyy.padStart(4, '0')}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+    }
+  }
+  return dateStr;
+}
+
+function mapTipoPlanoToPessoa(t?: string): 'F' | 'J' {
+  if (!t) return 'F';
+  return t.toUpperCase() === 'PJ' ? 'J' : 'F';
+}
+
 export async function consultarPessoaPorDocumento(
   documento: string
 ): Promise<PessoaRecord | null> {
@@ -42,8 +59,9 @@ export async function consultarPessoaPorDocumento(
 
     // O nome do campo enviado ao endpoint pode variar. Deixe configuravel.
     const fieldName = CONFIG.PESSOAS_DOC_FIELD || 'documento';
+    const digits = onlyDigits(documento);
     const body: Record<string, any> = {
-      [fieldName]: Number(onlyDigits(documento)),
+      [fieldName]: digits, // manter string para nǜo perder zeros à esquerda
     };
 
     const r = await fetch(API_PESSOAS, {
@@ -60,9 +78,26 @@ export async function consultarPessoaPorDocumento(
       throw new Error(`Falha ao consultar pessoa: ${t}`);
     }
 
-    const data = (await r.json()) as { content?: PessoaRecord[]; numberOfElements?: string };
-    const first = Array.isArray(data?.content) ? data.content[0] : null;
-    return first ?? null;
+    const data = (await r.json()) as { content?: any[]; numberOfElements?: string };
+    const content = Array.isArray(data?.content) ? data.content : [];
+
+    // Seleciona pelo CPF informado para evitar pegar o registro errado.
+    const selected =
+      content.find((item) => onlyDigits(item?.cpf) === digits) || content[0] || null;
+
+    if (!selected) return null;
+
+    const normalizedDocumento = onlyDigits(selected.cpf || documento) || digits;
+    return {
+      tip_pessoa: mapTipoPlanoToPessoa(selected?.tipo_plano || selected?.tip_pessoa),
+      nome_pessoa: selected?.nome || selected?.nome_pessoa,
+      contrato: selected?.registro_ans?.trim?.() || selected?.contrato,
+      cod_pessoa: selected?.codigo_pessoa || selected?.cod_pessoa,
+      dt_nasc: toIsoDate(selected?.data_nascimento || selected?.dt_nasc),
+      carteirinha: selected?.carteirinha,
+      doc_pessoa_s_formatacao: normalizedDocumento,
+      doc_pessoa_formatado: selected?.cpf || documento,
+    };
   };
 
   try {
