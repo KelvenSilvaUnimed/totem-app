@@ -1,15 +1,9 @@
 import { StyleSheet } from 'react-native';
 
 export const palette = {
-<<<<<<< HEAD
   background: '#0f172a',
   card: '#111827',
   muted: '#94a3b8',
-=======
-  background: '#f3f6fb',
-  card: '#111827',
-  muted: '#64748b',
->>>>>>> origin/master
   primary: '#38bdf8',
   primaryStrong: '#0ea5e9',
   secondary: '#1f2937',
@@ -18,7 +12,6 @@ export const palette = {
   error: '#ef4444',
   white: '#f8fafc',
   darkText: '#0f172a',
-<<<<<<< HEAD
 };
 
 const styles = StyleSheet.create({
@@ -27,163 +20,6 @@ const styles = StyleSheet.create({
     backgroundColor: palette.background,
   },
   scrollContent: {
-=======
-  heroGreen: '#2e7d32',
-  heroOrange: '#f58634',
-};
-
-const styles = StyleSheet.create({
-  backgroundLayer: {
-    flex: 1,
-    position: 'relative',
-  },
-  backgroundBase: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#eff5f2',
-    zIndex: 0,
-  },
-  backgroundOverlay: {
-    width: '100%',
-    height: '100%',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    zIndex: 1,
-  },
-  decorativeLayer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1.5,
-    overflow: 'hidden',
-  },
-  decorativeImage: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-    aspectRatio: 1.33,
-  },
-  safeArea: {
-    flex: 1,
-    backgroundColor: 'transparent',
-    zIndex: 2,
-  },
-  heroSafeArea: {
-    flex: 1,
-    backgroundColor: 'transparent',
-    zIndex: 2,
-  },
-  heroContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 32,
-    minHeight: '100%',
-  },
-  heroCard: {
-    width: '100%',
-    maxWidth: 620,
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    borderRadius: 32,
-    paddingHorizontal: 32,
-    paddingVertical: 40,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 30,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 10,
-  },
-  heroTitle: {
-    fontSize: 36,
-    fontWeight: '800',
-    color: palette.heroGreen,
-    textAlign: 'center',
-    letterSpacing: 1,
-  },
-  heroSubtitle: {
-    marginTop: 16,
-    fontSize: 20,
-    color: palette.heroGreen,
-    textAlign: 'center',
-    lineHeight: 28,
-    fontWeight: '500',
-  },
-  heroButton: {
-    marginTop: 36,
-    width: '100%',
-    borderRadius: 40,
-    backgroundColor: palette.heroOrange,
-    paddingVertical: 18,
-    alignItems: 'center',
-    shadowColor: palette.heroOrange,
-    shadowOpacity: 0.4,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
-  },
-  heroButtonDisabled: {
-    opacity: 0.85,
-  },
-  heroButtonText: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: '700',
-    letterSpacing: 1,
-  },
-  heroHiddenInput: {
-    position: 'absolute',
-    width: 1,
-    height: 1,
-    opacity: 0,
-  },
-  heroHint: {
-    marginTop: 18,
-    color: '#4d7c0f',
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  heroAssistant: {
-    position: 'absolute',
-    left: 32,
-    bottom: 0,
-    width: 280,
-    height: 360,
-  },
-  heroBrandCard: {
-    position: 'absolute',
-    right: 32,
-    bottom: 32,
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    borderRadius: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-  },
-  heroBrandSlogan: {
-    color: palette.heroGreen,
-    fontWeight: '600',
-    fontSize: 14,
-    marginBottom: 8,
-  },
-  heroBrandLogo: {
-    width: 140,
-    height: 32,
-  },
-  scrollContent: {
-    flexGrow: 1,
->>>>>>> origin/master
     padding: 24,
     paddingBottom: 48,
   },
@@ -207,10 +43,6 @@ const styles = StyleSheet.create({
     color: palette.muted,
     fontSize: 14,
     lineHeight: 20,
-<<<<<<< HEAD
-=======
-    textAlign: 'center',
->>>>>>> origin/master
   },
   highlight: {
     color: palette.white,
@@ -371,7 +203,3 @@ const styles = StyleSheet.create({
 });
 
 export default styles;
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/master

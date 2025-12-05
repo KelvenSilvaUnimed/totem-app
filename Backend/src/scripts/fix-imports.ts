@@ -18,12 +18,7 @@ for (const f of project.getSourceFiles()) {
   for (const imp of imports) {
     const spec = imp.getModuleSpecifierValue();
     if (!isRelative(spec)) continue;
-<<<<<<< HEAD
     if (hasExt(spec)) continue;           
-=======
-    if (hasExt(spec)) continue;           // já tem extensão
-    // acrescenta .js, pois no dist o arquivo será .js
->>>>>>> origin/master
     imp.setModuleSpecifier(spec + ".js");
     changed++;
   }

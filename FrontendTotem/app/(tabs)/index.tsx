@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import { useMemo, useState } from 'react';
 import {
     ActivityIndicator,
@@ -19,52 +18,14 @@ import {
     imprimirBoleto,
     lookupByCpf,
     utils,
-=======
-import { useMemo, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  Image,
-  Linking,
-  SafeAreaView,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  useWindowDimensions,
-  View,
-} from 'react-native';
-
-import {
-  buscarBoleto,
-  buscarFaturas,
-  getPdfViewerUrl,
-  imprimirBoleto,
-  lookupByCpf,
-  utils,
->>>>>>> origin/master
 } from '@/services/api.service';
 import type { Beneficiario, BoletoResult, Fatura } from '@/services/api.types';
 import styles, { palette } from '@/styles/totem.styles';
 
-<<<<<<< HEAD
-=======
-// Background images
-const HERO_BACKGROUND = require('../../assets/images/fundo.png');
-const HERO_BACKGROUND_OVERLAY = require('../../assets/images/fundo_transparente.png');
-const HERO_ASSISTANT = require('../../assets/images/atendente.png');
-const HERO_LOGO = require('../../assets/images/logo.png');
-
->>>>>>> origin/master
 type Step = 'cpf' | 'servicos' | 'contrato' | 'faturas';
 type StatusType = 'ok' | 'warn' | 'err';
 
 export default function TotemHomeScreen() {
-<<<<<<< HEAD
-=======
-  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
->>>>>>> origin/master
   const [step, setStep] = useState<Step>('cpf');
   const [cpf, setCpf] = useState('');
   const [cnpj, setCnpj] = useState('');
@@ -75,10 +36,6 @@ export default function TotemHomeScreen() {
   const [faturas, setFaturas] = useState<Fatura[]>([]);
   const [selectedFatura, setSelectedFatura] = useState<string | null>(null);
   const [boletoAtual, setBoletoAtual] = useState<BoletoResult | null>(null);
-<<<<<<< HEAD
-=======
-  const heroInputRef = useRef<TextInput>(null);
->>>>>>> origin/master
 
   const resumoFaturas = useMemo(() => {
     if (!faturas.length) return 'Nenhuma fatura encontrada.';
@@ -86,11 +43,6 @@ export default function TotemHomeScreen() {
   }, [faturas]);
 
   const isPJ = beneficiario?.tipoPessoa === 'PJ';
-<<<<<<< HEAD
-=======
-  const cpfDigits = utils.digits(cpf);
-  const isCpfReady = cpfDigits.length === 11;
->>>>>>> origin/master
 
   const setStatusMessage = (type: StatusType, message: string) => setStatus({ type, message });
 
@@ -297,7 +249,6 @@ export default function TotemHomeScreen() {
     );
   };
 
-<<<<<<< HEAD
   const renderCPFStep = () => (
     <View style={styles.card}>
       <Text style={styles.cardTitle}>Totem de Autoatendimento</Text>
@@ -314,46 +265,6 @@ export default function TotemHomeScreen() {
       />
       <View style={styles.buttonRow}>
         <PrimaryButton text="Avançar" onPress={handleLookup} disabled={loading} />
-=======
-  const handleHeroButtonPress = () => {
-    if (isCpfReady) {
-      handleLookup();
-      return;
-    }
-    heroInputRef.current?.focus();
-  };
-
-  const renderHeroStep = () => (
-    <View style={styles.heroContainer}>
-      <View style={styles.heroCard}>
-        <Text style={styles.heroTitle}>TOTEM DE ATENDIMENTO</Text>
-        <Text style={styles.heroSubtitle}>
-          Bem-vindo!{'\n'}Retire aqui a sua 2ª via de boleto:
-        </Text>
-        <TouchableOpacity
-          activeOpacity={0.9}
-          style={[styles.heroButton, (!isCpfReady || loading) && styles.heroButtonDisabled]}
-          onPress={handleHeroButtonPress}
-        >
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.heroButtonText}>{cpf || 'DIGITE O CPF'}</Text>}
-        </TouchableOpacity>
-        <TextInput
-          ref={heroInputRef}
-          style={styles.heroHiddenInput}
-          value={cpf}
-          keyboardType="number-pad"
-          onChangeText={(value) => setCpf(formatCpfInput(value))}
-          maxLength={14}
-          returnKeyType="done"
-          onSubmitEditing={() => isCpfReady && handleLookup()}
-        />
-        <Text style={styles.heroHint}>Digite os 11 dígitos do CPF e toque para continuar.</Text>
-      </View>
-      <Image source={HERO_ASSISTANT} style={styles.heroAssistant} resizeMode="contain" />
-      <View style={styles.heroBrandCard}>
-        <Text style={styles.heroBrandSlogan}>Sua vida precisa de um plano.</Text>
-        <Image source={HERO_LOGO} style={styles.heroBrandLogo} resizeMode="contain" />
->>>>>>> origin/master
       </View>
     </View>
   );
@@ -457,7 +368,6 @@ export default function TotemHomeScreen() {
     </View>
   );
 
-<<<<<<< HEAD
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -474,53 +384,6 @@ export default function TotemHomeScreen() {
         )}
       </ScrollView>
     </SafeAreaView>
-=======
-  const renderMainContent = () => {
-    if (step === 'cpf') {
-      return <SafeAreaView style={styles.heroSafeArea}>{renderHeroStep()}</SafeAreaView>;
-    }
-
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          {renderStatus()}
-          {step === 'servicos' && renderServicosStep()}
-          {step === 'contrato' && renderContratoStep()}
-          {step === 'faturas' && renderFaturasStep()}
-          {loading && (
-            <View style={styles.loading}>
-              <Text style={styles.loadingText}>Processando...</Text>
-              <ActivityIndicator color={palette.primary} style={{ marginLeft: 8 }} />
-            </View>
-          )}
-        </ScrollView>
-      </SafeAreaView>
-    );
-  };
-
-  // Calcula escala baseada na largura da tela (referência: 1920px)
-  const baseWidth = 1920;
-  const scale = screenWidth / baseWidth;
-  const decorativeWidth = 1920 * scale;
-  const decorativeHeight = 1080 * scale;
-
-  return (
-    <View style={styles.backgroundLayer}>
-      <View style={styles.backgroundBase} />
-      <Image source={HERO_BACKGROUND} style={styles.backgroundOverlay} resizeMode="cover" />
-      <View style={styles.decorativeLayer} pointerEvents="none">
-        <Image
-          source={HERO_BACKGROUND_OVERLAY}
-          style={{
-            width: decorativeWidth,
-            height: decorativeHeight,
-          }}
-          resizeMode="contain"
-        />
-      </View>
-      {renderMainContent()}
-    </View>
->>>>>>> origin/master
   );
 }
 
@@ -562,7 +425,3 @@ const ActionButton = ({ text, onPress, disabled }: ButtonProps) => (
   </TouchableOpacity>
 );
 
-<<<<<<< HEAD
-
-=======
->>>>>>> origin/master

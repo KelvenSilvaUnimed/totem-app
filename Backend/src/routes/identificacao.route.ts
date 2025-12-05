@@ -7,19 +7,11 @@ function mapTipoPessoa(t?: string): 'PF' | 'PJ' {
 }
 
 async function doLookup(documento?: string) {
-<<<<<<< HEAD
   if (!documento) return { status: 400, payload: { error: 'documento obrigatorio' } };
 
   try {
     const pessoa = await consultarPessoaPorDocumento(documento);
     if (!pessoa) return { status: 404, payload: { error: 'Pessoa não encontrada' } };
-=======
-  if (!documento) return { status: 400, payload: { error: 'documento Ǹ obrigat��rio' } };
-
-  try {
-    const pessoa = await consultarPessoaPorDocumento(documento);
-    if (!pessoa) return { status: 404, payload: { error: 'Pessoa nǜo encontrada' } };
->>>>>>> origin/master
 
     const tipoPessoa = mapTipoPessoa(pessoa.tip_pessoa);
     const exige = tipoPessoa === 'PF' ? 'dt_nasc' : 'contrato';
@@ -30,17 +22,10 @@ async function doLookup(documento?: string) {
         documento,
         nome: pessoa.nome_pessoa ?? null,
         tipoPessoa,
-<<<<<<< HEAD
         exige, 
         contrato: pessoa.contrato ?? null,
         cod_pessoa: pessoa.cod_pessoa ?? null,
         dt_nasc: pessoa.dt_nasc ?? null, 
-=======
-        exige, // dica pro front do totem: qual proximo campo pedir
-        contrato: pessoa.contrato ?? null,
-        cod_pessoa: pessoa.cod_pessoa ?? null,
-        dt_nasc: pessoa.dt_nasc ?? null, // pode ajudar na validacao PF
->>>>>>> origin/master
         carteirinha: pessoa.carteirinha ?? null,
       },
     };
@@ -50,36 +35,23 @@ async function doLookup(documento?: string) {
 }
 
 export const identificacaoRoute: FastifyPluginAsync = async (fastify) => {
-<<<<<<< HEAD
-=======
-  // POST /api/identificacao/lookup  { documento }
->>>>>>> origin/master
   fastify.post('/api/identificacao/lookup', async (request, reply) => {
     const { documento } = request.body as { documento?: string };
     const { status, payload } = await doLookup(documento);
     return reply.code(status).send(payload);
   });
 
-<<<<<<< HEAD
-=======
-  // GET /api/identificacao/lookup?documento=...
->>>>>>> origin/master
   fastify.get('/api/identificacao/lookup', async (request, reply) => {
     const documento = (request.query as any)?.documento as string | undefined;
     const { status, payload } = await doLookup(documento);
     return reply.code(status).send(payload);
   });
 
-<<<<<<< HEAD
-
-=======
-  // POST /api/identificacao/validar  { ...payload livre para a API 0177-valida-nome-benef }
->>>>>>> origin/master
   fastify.post('/api/identificacao/validar', async (request, reply) => {
     try {
       const body = (request.body as any) || {};
       const pessoa = await validarNomeBenef(body);
-      if (!pessoa) return reply.code(404).send({ error: 'Pessoa nǜo encontrada' });
+      if (!pessoa) return reply.code(404).send({ error: 'Pessoa não encontrada' });
 
       const tipoPessoa = mapTipoPessoa(pessoa.tip_pessoa);
       const exige = tipoPessoa === 'PF' ? 'dt_nasc' : 'contrato';
