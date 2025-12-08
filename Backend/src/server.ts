@@ -1,15 +1,19 @@
 import Fastify from 'fastify';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import fastifyStatic from '@fastify/static';
-import { CONFIG } from './config/env';
-import { corsPlugin } from './plugins/cors';
-import { mailerPlugin } from './plugins/mailer';
-import { securityPlugin } from './plugins/security';
-import { boletoRoute } from './routes/boleto.route';
-import { faturasRoute } from './routes/faturas.route';
-import { healthRoute } from './routes/health.route';
+import { CONFIG } from './config/env.js';
+import { corsPlugin } from './plugins/cors.js';
+import { mailerPlugin } from './plugins/mailer.js';
+import { securityPlugin } from './plugins/security.js';
+import { boletoRoute } from './routes/boleto.route.js';
+import { faturasRoute } from './routes/faturas.route.js';
+import { healthRoute } from './routes/health.route.js';
 import { identificacaoRoute } from './routes/identificacao.route.js';
-import { pdfRoute } from './routes/pdf.route';
+import { pdfRoute } from './routes/pdf.route.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 async function build() {
   const app = Fastify({ logger: true });

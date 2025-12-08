@@ -2,12 +2,15 @@ import { useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Image,
+    ImageBackground,
     Linking,
     SafeAreaView,
     ScrollView,
     Text,
     TextInput,
     TouchableOpacity,
+    useWindowDimensions,
     View,
 } from 'react-native';
 
@@ -26,6 +29,7 @@ type Step = 'cpf' | 'servicos' | 'contrato' | 'faturas';
 type StatusType = 'ok' | 'warn' | 'err';
 
 export default function TotemHomeScreen() {
+  const { width, height } = useWindowDimensions();
   const [step, setStep] = useState<Step>('cpf');
   const [cpf, setCpf] = useState('');
   const [cnpj, setCnpj] = useState('');
@@ -36,6 +40,11 @@ export default function TotemHomeScreen() {
   const [faturas, setFaturas] = useState<Fatura[]>([]);
   const [selectedFatura, setSelectedFatura] = useState<string | null>(null);
   const [boletoAtual, setBoletoAtual] = useState<BoletoResult | null>(null);
+  const [showCpfInput, setShowCpfInput] = useState(false);
+
+  // Tamanhos responsivos baseados na tela
+  const atendenteWidth = width * 0.25;
+  const atendenteHeight = height * 0.55;
 
   const resumoFaturas = useMemo(() => {
     if (!faturas.length) return 'Nenhuma fatura encontrada.';
@@ -226,22 +235,15 @@ export default function TotemHomeScreen() {
     setBoletoAtual(null);
     setStep('cpf');
     setStatus(null);
+    setShowCpfInput(false);
   };
 
   const renderStatus = () => {
-    if (!status) return null;
-    const background =
-      status.type === 'ok'
-        ? 'rgba(5,46,22,0.8)'
-        : status.type === 'warn'
-        ? 'rgba(63,20,5,0.8)'
-        : 'rgba(62,12,17,0.82)';
-    const border =
-      status.type === 'ok'
-        ? 'rgba(34,197,94,0.8)'
-        : status.type === 'warn'
-        ? 'rgba(245,158,11,0.8)'
-        : 'rgba(239,68,68,0.8)';
+    // Exibe somente mensagens de alerta/erro para não mostrar barra "Bem-vindo"
+    if (!status || status.type === 'ok') return null;
+    const isWarn = status.type === 'warn';
+    const background = isWarn ? 'rgba(63,20,5,0.8)' : 'rgba(62,12,17,0.82)';
+    const border = isWarn ? 'rgba(245,158,11,0.8)' : 'rgba(239,68,68,0.8)';
     return (
       <View style={[styles.status, { backgroundColor: background, borderColor: border }]}>
         <Text style={styles.statusText}>{status.message}</Text>
@@ -250,140 +252,280 @@ export default function TotemHomeScreen() {
   };
 
   const renderCPFStep = () => (
-    <View style={styles.card}>
-      <Text style={styles.cardTitle}>Totem de Autoatendimento</Text>
-      <Text style={styles.muted}>Digite seu CPF para iniciar o atendimento.</Text>
-      <Text style={styles.label}>CPF do beneficiário</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Somente números"
-        placeholderTextColor={palette.muted}
-        value={cpf}
-        onChangeText={(value) => setCpf(formatCpfInput(value))}
-        keyboardType="numeric"
-        maxLength={14}
-      />
-      <View style={styles.buttonRow}>
-        <PrimaryButton text="Avançar" onPress={handleLookup} disabled={loading} />
-      </View>
+    <View style={styles.welcomeCard}>
+      <Text style={styles.welcomeTitle}>TOTEM DE ATENDIMENTO</Text>
+      <Text style={styles.welcomeSubtitle}>Bem-vindo!</Text>
+      <Text style={styles.welcomeDescription}>Retire aqui a sua 2ª via de boleto:</Text>
+      
+      {showCpfInput ? (
+        <View style={styles.cpfInputContainer}>
+          <TextInput
+            style={styles.cpfInput}
+            placeholder="000.000.000-00"
+            placeholderTextColor="#999"
+            value={cpf}
+            onChangeText={(value) => setCpf(formatCpfInput(value))}
+            keyboardType="numeric"
+            maxLength={14}
+            autoFocus
+          />
+          <View style={styles.cpfButtonRow}>
+            <TouchableOpacity 
+              style={styles.cancelButton} 
+              onPress={() => { setShowCpfInput(false); setCpf(''); }}
+            >
+              <Text style={styles.cancelButtonText}>Cancelar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.orangeButton, loading && styles.buttonDisabled]} 
+              onPress={handleLookup} 
+              disabled={loading}
+            >
+              <Text style={styles.orangeButtonText}>CONFIRMAR</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : (
+        <View style={styles.buttonRow}>
+          <TouchableOpacity 
+            style={[styles.orangeButton, loading && styles.buttonDisabled]} 
+            onPress={() => setShowCpfInput(true)} 
+            disabled={loading}
+          >
+            <Text style={styles.orangeButtonText}>DIGITE O CPF</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 
-  const renderServicosStep = () => (
-    <View style={styles.card}>
-      <Text style={styles.cardTitle}>Serviços disponíveis</Text>
-      <Text style={styles.muted}>
-        Olá <Text style={styles.highlight}>{utils.formatNomeCompleto(beneficiario?.nome || '')}</Text>, identificamos
-        seu plano como{' '}
-        <Text style={styles.highlight}>
-          {beneficiario?.tipoPessoa} - {beneficiario?.tipoPessoa === 'PJ' ? 'Pessoa Jurídica' : 'Pessoa Física'}
-        </Text>
-        .
-      </Text>
-      <Text style={[styles.muted, { marginTop: 8 }]}>Qual serviço deseja realizar hoje?</Text>
-      <View style={styles.buttonColumn}>
-        <PrimaryButton text="📄 Emissão de 2ª via de boletos" onPress={handleServicoSelecionado} disabled={loading} />
-        <SecondaryButton text="📋 Guias (em desenvolvimento)" disabled />
-        <SecondaryButton text="🩺 Consultas (em desenvolvimento)" disabled />
+  const renderServicosStep = () => {
+    const isPessoaJuridica = beneficiario?.tipoPessoa === 'PJ';
+    
+    if (isPessoaJuridica) {
+      return (
+        <View style={styles.welcomeCard}>
+          <Text style={styles.pjTitle}>2ª via de boleto</Text>
+          <View style={styles.pjBadge}>
+            <Text style={styles.pjBadgeText}>PESSOA JURÍDICA</Text>
+          </View>
+          <Text style={styles.pjWelcome}>Bem vindo {utils.formatNomeCompleto(beneficiario?.nome || '')}!</Text>
+          <Text style={styles.pjNextStep}>Próximo passo:</Text>
+          <View style={styles.buttonRow}>
+            <TouchableOpacity 
+              style={[styles.greenButton, loading && styles.buttonDisabled]} 
+              onPress={handleServicoSelecionado} 
+              disabled={loading}
+            >
+              <Text style={styles.greenButtonText}>DIGITE O NÚMERO DO CONTRATO</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={[styles.buttonRow, { marginTop: 24 }]}>
+            <LinkButton text="Não é você? Digitar outro CPF" onPress={resetarFluxo} />
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.welcomeCard}>
+        <Text style={styles.pjTitle}>2ª via de boleto</Text>
+        <View style={styles.pfBadge}>
+          <Text style={styles.pfBadgeText}>PESSOA FÍSICA</Text>
+        </View>
+        <Text style={styles.pjWelcome}>Bem vindo {utils.formatNomeCompleto(beneficiario?.nome || '')}!</Text>
+        <Text style={styles.pjNextStep}>Próximo passo:</Text>
+        <View style={styles.buttonRow}>
+          <TouchableOpacity 
+            style={[styles.greenButton, loading && styles.buttonDisabled]} 
+            onPress={handleServicoSelecionado} 
+            disabled={loading}
+          >
+            <Text style={styles.greenButtonText}>BUSCAR FATURAS</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={[styles.buttonRow, { marginTop: 24 }]}>
+          <LinkButton text="Não é você? Digitar outro CPF" onPress={resetarFluxo} />
+        </View>
       </View>
-      <View style={styles.buttonRow}>
-        <LinkButton text="Não é você? Digitar outro CPF" onPress={resetarFluxo} />
-      </View>
-    </View>
-  );
+    );
+  };
 
   const renderContratoStep = () => (
-    <View style={styles.card}>
-      <Text style={styles.cardTitle}>Informar dados do contrato</Text>
-      <Text style={styles.muted}>
-        Por se tratar de um contrato PJ, informe o CNPJ e depois o número do contrato para localizar as faturas em
-        aberto.
-      </Text>
-      <Text style={styles.label}>CNPJ</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Digite o CNPJ"
-        placeholderTextColor={palette.muted}
-        value={cnpj}
-        onChangeText={(value) => setCnpj(formatCnpjInput(value))}
-        keyboardType="numeric"
-        maxLength={18}
-      />
-      <Text style={styles.label}>Número do contrato</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Digite o número do contrato"
-        placeholderTextColor={palette.muted}
-        value={contrato}
-        onChangeText={setContrato}
-        keyboardType="numeric"
-      />
-      <View style={styles.buttonRow}>
-        <SecondaryButton text="Voltar" onPress={() => setStep('servicos')} disabled={loading} />
-        <PrimaryButton text="Buscar faturas" onPress={handleBuscarFaturasPJ} disabled={loading} />
+    <View style={styles.welcomeCard}>
+      <Text style={styles.pjTitle}>2ª via de boleto</Text>
+      <View style={styles.pjBadge}>
+        <Text style={styles.pjBadgeText}>PESSOA JURÍDICA</Text>
+      </View>
+      <Text style={styles.pjWelcome}>Bem vindo {utils.formatNomeCompleto(beneficiario?.nome || '')}!</Text>
+      
+      <View style={styles.formContainer}>
+        <Text style={styles.formLabel}>CNPJ</Text>
+        <TextInput
+          style={styles.formInput}
+          placeholder="00.000.000/0000-00"
+          placeholderTextColor="#999"
+          value={cnpj}
+          onChangeText={(value) => setCnpj(formatCnpjInput(value))}
+          keyboardType="numeric"
+          maxLength={18}
+        />
+        <Text style={styles.formLabel}>Número do contrato</Text>
+        <TextInput
+          style={styles.formInput}
+          placeholder="Digite o número do contrato"
+          placeholderTextColor="#999"
+          value={contrato}
+          onChangeText={setContrato}
+          keyboardType="numeric"
+        />
+      </View>
+      
+      <View style={styles.cpfButtonRow}>
+        <TouchableOpacity 
+          style={styles.cancelButton} 
+          onPress={() => setStep('servicos')}
+          disabled={loading}
+        >
+          <Text style={styles.cancelButtonText}>Voltar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.greenButton, loading && styles.buttonDisabled]} 
+          onPress={handleBuscarFaturasPJ} 
+          disabled={loading}
+        >
+          <Text style={styles.greenButtonText}>BUSCAR FATURAS</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
 
   const renderFaturasStep = () => (
-    <View style={styles.card}>
+    <View style={[styles.card, styles.faturaScreenContainer]}>
       <Text style={styles.cardTitle}>Faturas em aberto</Text>
       <Text style={styles.muted}>{resumoFaturas}</Text>
-      <Text style={[styles.muted, { marginTop: 8 }]}>
-        Toque em uma fatura para carregar o boleto e visualizar as opções.
-      </Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.faturaScroll}>
-        {faturas.map((item, index) => {
-          const numero = getNumeroFatura(item, index);
-          const selected = selectedFatura === numero;
-          return (
-            <TouchableOpacity
-              key={numero}
-              style={[styles.faturaCard, selected && styles.faturaCardSelected]}
-              onPress={() => handleSelecionarFatura(item, index)}
-              disabled={loading}
-            >
-              <Text style={styles.faturaTitle}>Fatura {numero}</Text>
-              <Text style={styles.faturaInfo}>Vencimento: {formatarDataFatura(item)}</Text>
-              <Text style={styles.faturaValue}>{formatarValorFatura(item)}</Text>
-              {selected && loading ? <ActivityIndicator color={palette.primary} style={{ marginTop: 8 }} /> : null}
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-      {boletoAtual && (
-        <View style={styles.actionsContainer}>
-          <Text style={styles.actionsTitle}>Boleto da fatura {selectedFatura} carregado!</Text>
-          <View style={styles.actionsGrid}>
-            <ActionButton text="👁️ Visualizar" onPress={handleVisualizar} disabled={loading} />
-            <ActionButton text="🖨️ Imprimir" onPress={handleImprimir} disabled={loading} />
-            <ActionButton text="📧 Email (em breve)" disabled />
-            <ActionButton text="💬 WhatsApp (em breve)" disabled />
+
+      {!faturas.length ? (
+        <View style={styles.semFaturaContainer}>
+          <Text style={styles.semFaturaTexto}>Nenhuma fatura em aberto no momento.</Text>
+          <View style={styles.buttonRow}>
+            <SecondaryButton text="Consultar novo CPF/CNPJ" onPress={resetarFluxo} />
           </View>
         </View>
+      ) : (
+        <>
+          <Text style={[styles.muted, { marginTop: 8 }]}>
+            Esses são boletos em aberto. Toque em abrir para carregar o boleto.
+          </Text>
+
+          <View style={styles.faturaHeader}>
+            <Text style={styles.faturaHeaderText}>Data</Text>
+            <Text style={styles.faturaHeaderText}>Valor</Text>
+            <Text style={styles.faturaHeaderText}>Ação</Text>
+          </View>
+
+          <ScrollView horizontal={false} showsVerticalScrollIndicator={false} style={styles.faturaScroll}>
+            {faturas.map((item, index) => {
+              const numero = getNumeroFatura(item, index);
+              const selected = selectedFatura === numero;
+              return (
+                <View key={numero} style={[styles.faturaRow, selected && styles.faturaRowSelected]}>
+                  <Text style={styles.faturaRowText}>{formatarDataFatura(item)}</Text>
+                  <Text style={styles.faturaRowValue}>{formatarValorFatura(item)}</Text>
+                  <TouchableOpacity
+                    style={[styles.rowActionButton, loading && styles.buttonDisabled]}
+                    onPress={() => handleSelecionarFatura(item, index)}
+                    disabled={loading}
+                  >
+                    {selected && loading ? (
+                      <ActivityIndicator color={palette.darkText} />
+                    ) : (
+                      <Text style={styles.rowActionButtonText}>Abrir</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
+          </ScrollView>
+          {boletoAtual && (
+            <View style={styles.actionsContainer}>
+              <Text style={styles.actionsTitle}>Boleto da fatura {selectedFatura} carregado!</Text>
+              <View style={styles.actionsGrid}>
+                <ActionButton text="👁️ Visualizar" onPress={handleVisualizar} disabled={loading} />
+                <ActionButton text="🖨️ Imprimir" onPress={handleImprimir} disabled={loading} />
+                <ActionButton text="📧 Email (em breve)" disabled />
+                <ActionButton text="💬 WhatsApp (em breve)" disabled />
+              </View>
+            </View>
+          )}
+          <View style={styles.buttonRow}>
+            <SecondaryButton text="Consultar novo CPF/CNPJ" onPress={resetarFluxo} />
+          </View>
+        </>
       )}
-      <View style={styles.buttonRow}>
-        <SecondaryButton text="Consultar novo CPF/CNPJ" onPress={resetarFluxo} />
-      </View>
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {renderStatus()}
-        {step === 'cpf' && renderCPFStep()}
-        {step === 'servicos' && renderServicosStep()}
-        {step === 'contrato' && renderContratoStep()}
-        {step === 'faturas' && renderFaturasStep()}
-        {loading && (
-          <View style={styles.loading}>
-            <Text style={styles.loadingText}>Processando...</Text>
-            <ActivityIndicator color={palette.primary} style={{ marginLeft: 8 }} />
-          </View>
-        )}
-      </ScrollView>
-    </SafeAreaView>
+    <ImageBackground
+      source={require('@/assets/images/fundo_.png')}
+      style={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      <SafeAreaView style={styles.safeArea}>
+        {/* Imagem top_left - Canto superior esquerdo */}
+        <Image
+          source={require('@/assets/images/top_left.png')}
+          style={styles.topLeftImage}
+          resizeMode="contain"
+        />
+        
+        {/* Imagem top_right - Canto superior direito */}
+        <Image
+          source={require('@/assets/images/top_right.png')}
+          style={styles.topRightImage}
+          resizeMode="contain"
+        />
+        
+        {/* Imagem bottom_left - Canto inferior esquerdo */}
+        <Image
+          source={require('@/assets/images/bottom_left.png')}
+          style={styles.bottomLeftImage}
+          resizeMode="contain"
+        />
+        
+        {/* Imagem bottom_right - Canto inferior direito */}
+        <Image
+          source={require('@/assets/images/bottom_right.png')}
+          style={styles.bottomRightImage}
+          resizeMode="contain"
+        />
+        
+        {/* Imagem da Atendente - Posicionada atrás do conteúdo */}
+        <View style={styles.atendenteContainer}>
+          <Image
+            source={require('@/assets/images/atendente.png')}
+            style={[styles.atendenteImage, { width: atendenteWidth, height: atendenteHeight }]}
+            resizeMode="contain"
+          />
+        </View>
+        
+        {/* Conteúdo principal - Por cima da imagem */}
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          {renderStatus()}
+          {step === 'cpf' && renderCPFStep()}
+          {step === 'servicos' && renderServicosStep()}
+          {step === 'contrato' && renderContratoStep()}
+          {step === 'faturas' && renderFaturasStep()}
+          {loading && (
+            <View style={styles.loading}>
+              <Text style={styles.loadingText}>Processando...</Text>
+              <ActivityIndicator color={palette.primary} style={{ marginLeft: 8 }} />
+            </View>
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    </ImageBackground>
   );
 }
 
@@ -424,4 +566,5 @@ const ActionButton = ({ text, onPress, disabled }: ButtonProps) => (
     <Text style={styles.actionButtonText}>{text}</Text>
   </TouchableOpacity>
 );
+
 
