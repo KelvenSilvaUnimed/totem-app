@@ -42,9 +42,7 @@ export function safeFilename(filename: string): string {
 
   return (
     filename
-      // remove caracteres inválidos no Windows
       .replace(/[<>:"/\\|?*\x00-\x1f]/g, '_')
-      // evita .. ou nomes vazios
       .replace(/\.{2,}/g, '.')
       .replace(/^\.+|\.+$/g, '')
       .trim()

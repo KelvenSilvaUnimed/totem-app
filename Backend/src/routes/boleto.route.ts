@@ -9,7 +9,6 @@ const API_BOLETO = 'https://api.unimedpatos.sgusuite.com.br/api/procedure/p_prcs
 
 
 export const boletoRoute: FastifyPluginAsync = async (fastify) => {
-  // POST /api/boleto — busca a URL do boleto
 fastify.post('/api/boleto', async (request, reply) => {
 const started = Date.now();
 const body = request.body as { numeroFatura?: string | number };
@@ -39,8 +38,6 @@ fastify.log.info(`/api/boleto -> ${url ? 'OK' : 'NOK'} [${Date.now() - started}m
 return { url };
 });
 
-
-  // POST /api/send-boleto — envia o link do boleto por e-mail
 fastify.post('/api/send-boleto', async (request, reply) => {
 const body = request.body as { email?: string; url?: string; numeroFatura?: string | number };
 const { email, url, numeroFatura } = body ?? {};
@@ -68,7 +65,6 @@ await fastify.mailer.sendMail({ from: process.env.MAIL_FROM, to: email, subject,
 return { ok: true };
 });
 
-  // GET /api/pdf?url=... -> proxy para visualização inline (iframe)
   fastify.get('/api/pdf', async (request, reply) => {
     const { url } = request.query as { url?: string };
     if (!url || !isAllowedDocUrl(url)) {
@@ -86,12 +82,11 @@ return { ok: true };
       .header('Content-Type', headers['content-type'] || 'application/pdf')
       .header('Content-Disposition', `inline; filename="${fileName}"`)
       .header('Cache-Control', 'private, max-age=300')
-      .header('Content-Security-Policy', "frame-ancestors *"); // Permite o iframe em qualquer origem
+      .header('Content-Security-Policy', "frame-ancestors *"); 
 
     return reply.send(body);
   });
 
-  // GET /api/pdf-download?url=... -> proxy para forçar o download
   fastify.get('/api/pdf-download', async (request, reply) => {
     const { url } = request.query as { url?: string };
     if (!url || !isAllowedDocUrl(url)) {

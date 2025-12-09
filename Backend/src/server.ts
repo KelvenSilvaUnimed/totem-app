@@ -51,7 +51,6 @@ async function build() {
     wildcard: false,
   });
 
-  // Resposta simples para GET /
   app.get('/', async () => ({ ok: true }));
 
   // Rotas
