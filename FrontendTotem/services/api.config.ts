@@ -1,5 +1,5 @@
 const normalizeBaseUrl = (url?: string) =>
-  (url && url.trim() ? url.trim() : 'http://localhost:3000').replace(/\/+$/, '');
+  (url && url.trim() ? url.trim() : 'http://192.168.178.196:3000').replace(/\/+$/, '');
 
 const normalizePrefix = (prefix?: string) => {
   if (!prefix) return '';
