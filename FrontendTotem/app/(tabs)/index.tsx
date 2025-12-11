@@ -31,13 +31,16 @@ type StatusType = 'ok' | 'warn' | 'err';
 
 export default function TotemHomeScreen() {
   const { width, height } = useWindowDimensions();
-  // Tablet: mobile com dim >=900, ou web em viewport de tablet
+  // Tablet: mobile com tela grande OU web em viewport de tablet
   const viewportMax = Math.max(width, height);
   const viewportMin = Math.min(width, height);
   const isWebTablet = Platform.OS === 'web' && viewportMax >= 900 && viewportMax <= 1400 && viewportMin <= 1000;
-  const isNativeTablet = Platform.OS !== 'web' && viewportMax >= 900;
+  // Para dispositivos nativos, aceita dimensões mais amplas (portrait ou landscape)
+  const isNativeTablet =
+    Platform.OS !== 'web' &&
+    (viewportMax >= 900 || viewportMin >= 720);
   const isTablet = isWebTablet || isNativeTablet;
-  const atendenteWidth = width * (isTablet ? 0.48 : 0.25);
+  const atendenteWidth = width * (isTablet ? 0.44 : 0.25);
   const atendenteHeight = height * (isTablet ? 0.67 : 0.55);
   const [step, setStep] = useState<Step>('cpf');
   const [cpf, setCpf] = useState('');
@@ -277,12 +280,6 @@ export default function TotemHomeScreen() {
       />
           <View style={styles.cpfButtonRow}>
             <TouchableOpacity 
-              style={styles.cancelButton} 
-              onPress={() => { setShowCpfInput(false); setCpf(''); }}
-            >
-              <Text style={styles.cancelButtonText}>Cancelar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
               style={[styles.orangeButton, loading && styles.buttonDisabled]} 
               onPress={handleLookup} 
               disabled={loading}
@@ -387,7 +384,7 @@ export default function TotemHomeScreen() {
       />
       </View>
       
-      <View style={styles.cpfButtonRow}>
+      <View style={[styles.cpfButtonRow, isTablet && styles.cpfButtonRowTablet]}>
         <TouchableOpacity 
           style={styles.cancelButton} 
           onPress={() => setStep('servicos')}
@@ -544,12 +541,22 @@ export default function TotemHomeScreen() {
         </View>
         
         {/* Conteúdo principal - Por cima da imagem */}
-        <ScrollView contentContainerStyle={[styles.scrollContent, isTablet && styles.scrollContentTablet]}>
+        <ScrollView
+          style={styles.contentWrapper}
+          contentContainerStyle={[styles.scrollContent, isTablet && styles.scrollContentTablet]}>
         {renderStatus()}
         {step === 'cpf' && renderCPFStep()}
         {step === 'servicos' && renderServicosStep()}
-        {step === 'contrato' && renderContratoStep()}
-        {step === 'faturas' && renderFaturasStep()}
+        {step === 'contrato' && (
+          <View style={isTablet ? styles.welcomeCardTablet : undefined}>
+            {renderContratoStep()}
+          </View>
+        )}
+        {step === 'faturas' && (
+          <View style={isTablet ? styles.welcomeCardTablet : undefined}>
+            {renderFaturasStep()}
+          </View>
+        )}
         {loading && (
           <View style={styles.loading}>
             <Text style={styles.loadingText}>Processando...</Text>

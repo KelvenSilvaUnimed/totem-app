@@ -38,6 +38,11 @@ const styles = StyleSheet.create({
     paddingTop: '1%',
     paddingBottom: '25%',
   },
+  contentWrapper: {
+    flex: 1,
+    position: 'relative',
+    zIndex: 10,
+  },
   card: {
     backgroundColor: palette.card,
     borderRadius: 20,
@@ -263,10 +268,15 @@ const styles = StyleSheet.create({
   // Estilos da tela de boas-vindas (CPF) - TABLET
   welcomeCard: {
     backgroundColor: 'transparent',
-    paddingVertical: 40,
+    paddingVertical: 24,
     paddingHorizontal: 32,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  welcomeCardTablet: {
+    paddingTop: 12,
+    paddingBottom: 16,
+    marginTop: -24,
   },
   welcomeTitle: {
     color: palette.greenDark,
@@ -345,19 +355,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexWrap: 'wrap',
   },
+  cpfButtonRowTablet: {
+    flexWrap: 'nowrap',
+    gap: 24,
+    marginTop: 20,
+  },
   cancelButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 3,
-    borderColor: palette.grayText,
+    backgroundColor: '#ffffff',
+    borderWidth: 2,
+    borderColor: palette.greenDark,
     borderRadius: 40,
-    paddingVertical: 22,
+    paddingVertical: 24,
     paddingHorizontal: 48,
+    minWidth: 300,
     alignItems: 'center',
+    position: 'relative',
+    zIndex: 5,
   },
   cancelButtonText: {
-    color: palette.grayText,
-    fontWeight: '600',
-    fontSize: 22,
+    color: palette.greenDark,
+    fontWeight: '700',
+    fontSize: 24,
+    letterSpacing: 1,
   },
   // Estilos para tela PJ - TABLET
   pjTitle: {
@@ -406,7 +425,7 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontStyle: 'italic',
     textAlign: 'center',
-    marginBottom: '-1%',
+    marginBottom: 12,
   },
   greenButton: {
     backgroundColor: palette.greenDark,
@@ -457,7 +476,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   formContainerTablet: {
-    marginTop: -80,
+    marginTop: -24,
     zIndex: 10,
     elevation: 10,
   },
@@ -506,10 +525,10 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   topLeftImageTablet: {
-    left: '5%',
-    width: '48%',
+    left: '1%',
+    width: '41%',
     height: '30%',
-    top: '-10.2%'
+    top: '-10.4%'
   },
   topRightImage: {
     position: 'absolute',
@@ -521,8 +540,9 @@ const styles = StyleSheet.create({
   },
   topRightImageTablet: {
     right: '-6%',
-    width: '46%',
-    height: 200,
+    width: '42%',
+    height: '25%',
+    top: '-5%'
   },
   bottomLeftImage: {
     position: 'absolute',
@@ -537,6 +557,7 @@ const styles = StyleSheet.create({
     width: '55%',
     height: '70%',
     bottom: '-16%',
+    zIndex: 1,
   },
   bottomRightImage: {
     position: 'absolute',
@@ -547,8 +568,8 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   bottomRightImageTablet: {
-    bottom: '-18%',
-    right: '-5%',
+    bottom: '-15%',
+    right: '-8.5%',
     width: '38%',
     height: '80%',
   },
@@ -563,9 +584,9 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   atendenteContainerTablet: {
-    bottom: '-13.5%',
+    bottom: '-15.5%',
     left: '6.2%',
-    zIndex: 2,
+    zIndex: 1,
   },
   atendenteImage: {
     zIndex: 1,
