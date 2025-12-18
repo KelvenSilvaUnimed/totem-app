@@ -92,12 +92,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    gap: 20,
-    marginTop: 28,
+    gap: 19,
+    marginTop: 16,
+  },
+  buttonRowTablet: {
+    flexWrap: 'nowrap',
+    gap: 23,
   },
   buttonColumn: {
     gap: 16,
-    marginTop: 24,
+    marginTop: 29,
   },
   primaryButton: {
     backgroundColor: palette.primary,
@@ -181,7 +185,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: 14,
     paddingHorizontal: 16,
-    marginTop: 10,
+    marginTop: '0%',
     alignSelf: 'center',
   },
   faturaRowSelected: {

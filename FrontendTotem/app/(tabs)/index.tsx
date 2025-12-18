@@ -46,6 +46,7 @@ export default function TotemHomeScreen() {
   const [cpf, setCpf] = useState('');
   const [cnpj, setCnpj] = useState('');
   const [contrato, setContrato] = useState('');
+  const [contratoPF, setContratoPF] = useState('');
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<{ type: StatusType; message: string } | null>(null);
   const [beneficiario, setBeneficiario] = useState<Beneficiario | null>(null);
@@ -238,6 +239,7 @@ export default function TotemHomeScreen() {
     setCpf('');
     setCnpj('');
     setContrato('');
+    setContratoPF('');
     setBeneficiario(null);
     setFaturas([]);
     setSelectedFatura(null);
@@ -338,10 +340,28 @@ export default function TotemHomeScreen() {
       </View>
         <Text style={styles.pjWelcome}>Bem vindo {utils.formatNomeCompleto(beneficiario?.nome || '')}!</Text>
         <Text style={styles.pjNextStep}>Próximo passo:</Text>
+        <View style={[styles.formContainer, isTablet && styles.formContainerTablet]}>
+          <Text style={styles.formLabel}>Número do contrato</Text>
+          <TextInput
+            style={styles.formInput}
+            placeholder="Digite o número do contrato"
+            placeholderTextColor="#999"
+            value={contratoPF}
+            onChangeText={setContratoPF}
+            keyboardType="numeric"
+          />
+        </View>
       <View style={styles.buttonRow}>
           <TouchableOpacity 
             style={[styles.greenButton, loading && styles.buttonDisabled]} 
-            onPress={handleServicoSelecionado} 
+            onPress={() => {
+              const contratoNumero = utils.digits(contratoPF);
+              if (!contratoNumero) {
+                setStatusMessage('warn', 'Informe o número do contrato.');
+                return;
+              }
+              carregarFaturas(utils.digits(beneficiario?.documento || ''), contratoNumero);
+            }} 
             disabled={loading}
           >
             <Text style={styles.greenButtonText}>BUSCAR FATURAS</Text>
@@ -417,9 +437,6 @@ export default function TotemHomeScreen() {
         </View>
       ) : (
         <>
-      <Text style={[styles.muted, { marginTop: 8 }]}>
-            Esses são boletos em aberto. Toque em abrir para carregar o boleto.
-      </Text>
 
           <View style={styles.faturaHeader}>
             <Text style={styles.faturaHeaderText}>Data</Text>
@@ -454,14 +471,30 @@ export default function TotemHomeScreen() {
         <View style={styles.actionsContainer}>
           <Text style={styles.actionsTitle}>Boleto da fatura {selectedFatura} carregado!</Text>
           <View style={styles.actionsGrid}>
-            <ActionButton text="👁️ Visualizar" onPress={handleVisualizar} disabled={loading} />
-            <ActionButton text="🖨️ Imprimir" onPress={handleImprimir} disabled={loading} />
-            <ActionButton text="📧 Email (em breve)" disabled />
-            <ActionButton text="💬 WhatsApp (em breve)" disabled />
+            <ActionButton text="Visualizar" onPress={handleVisualizar} disabled={loading} />
+            <ActionButton text="Imprimir" onPress={handleImprimir} disabled={loading} />
+            <ActionButton text="Email (em breve)" disabled />
+            <ActionButton text="WhatsApp (em breve)" disabled />
+          </View>
+          <View style={styles.buttonRow}>
+            <SecondaryButton
+              text="Voltar"
+              onPress={() => {
+                setBoletoAtual(null);
+                setSelectedFatura(null);
+                setStep('faturas');
+              }}
+              disabled={loading}
+            />
           </View>
         </View>
       )}
-      <View style={styles.buttonRow}>
+      <View style={[styles.buttonRow, isTablet && styles.buttonRowTablet]}>
+        <SecondaryButton text="Voltar" onPress={() => {
+          setBoletoAtual(null);
+          setSelectedFatura(null);
+          setStep('faturas');
+        }} disabled={loading} />
         <SecondaryButton text="Consultar novo CPF/CNPJ" onPress={resetarFluxo} />
       </View>
         </>
@@ -543,7 +576,12 @@ export default function TotemHomeScreen() {
         {/* Conteúdo principal - Por cima da imagem */}
         <ScrollView
           style={styles.contentWrapper}
-          contentContainerStyle={[styles.scrollContent, isTablet && styles.scrollContentTablet]}>
+          contentContainerStyle={[styles.scrollContent, isTablet && styles.scrollContentTablet]}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="none"
+          automaticallyAdjustKeyboardInsets={false}
+          contentInsetAdjustmentBehavior="never"
+        >
         {renderStatus()}
         {step === 'cpf' && renderCPFStep()}
         {step === 'servicos' && renderServicosStep()}
