@@ -58,13 +58,15 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: '700',
     letterSpacing: 0.5,
-    marginBottom: 16,
+    marginBottom: 19,
     textAlign: 'center',
   },
   muted: {
     color: '#064E4C',
     fontSize: 20,
     lineHeight: 28,
+    alignItems: 'center',
+    textAlign: 'center'
   },
   highlight: {
     color: palette.white,
@@ -119,14 +121,13 @@ const styles = StyleSheet.create({
     fontSize: 22,
   },
   secondaryButton: {
-    backgroundColor: palette.secondary,
+    backgroundColor: '#008C50',
     borderRadius: 16,
     paddingVertical: 20,
     paddingHorizontal: 32,
     minWidth: 300,
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#334155',
+    borderWidth: 0,
     position: 'relative',
     zIndex: 3,
   },
@@ -166,7 +167,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    width: '96%',
+    width: '100%',
     alignSelf: 'center',
   },
   faturaHeaderText: {
@@ -177,7 +178,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   faturaRow: {
-    width: '96%',
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -205,6 +206,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
   },
+  rowActionGroup: {
+    flex: 1.8,
+    flexDirection: 'row',
+    gap: 9,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
   rowActionButton: {
     flex: 1,
     backgroundColor: '#d3d94a',
@@ -220,27 +228,9 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 16,
   },
-  actionsContainer: {
-    marginTop: 24,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: 'rgba(56,189,248,0.35)',
-    padding: 24,
-    backgroundColor: 'rgba(8,17,31,0.9)',
-  },
-  actionsTitle: {
-    color: palette.white,
-    fontWeight: '600',
-    textAlign: 'center',
-    fontSize: 22,
-  },
-  actionsGrid: {
-    marginTop: 20,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 16,
-    justifyContent: 'center',
-  },
+  actionsContainer: {},
+  actionsTitle: {},
+  actionsGrid: {},
   actionButton: {
     flexBasis: '48%',
     minWidth: 200,
@@ -458,6 +448,8 @@ const styles = StyleSheet.create({
     marginTop: 12,
     shadowColor: 'transparent',
     alignItems: 'center',
+    width: '115%',
+
   },
   semFaturaContainer: {
     marginTop: 20,
@@ -537,7 +529,7 @@ const styles = StyleSheet.create({
   topRightImage: {
     position: 'absolute',
     top: 0,
-    right: '-6%',
+    right: '-8%',
     width: '35%',
     height: 200,
     zIndex: 2,
@@ -565,17 +557,17 @@ const styles = StyleSheet.create({
   },
   bottomRightImage: {
     position: 'absolute',
-    bottom: 0,
-    right: '-8%',
+    bottom: '1.5%',
+    right: '-15%',
     width: '45%',
     height: '70%',
     zIndex: 2,
   },
   bottomRightImageTablet: {
-    bottom: '-15%',
-    right: '-8.5%',
-    width: '38%',
-    height: '80%',
+    bottom: '-11%',
+    right: '1%',
+    width: '31%',
+    height: '75%',
   },
   decorImageFill: {
     width: '100%',
@@ -583,7 +575,7 @@ const styles = StyleSheet.create({
   },
   atendenteContainer: {
     position: 'absolute',
-    bottom: '-1.5%',
+    bottom: '-2.6%',
     left: 0,
     zIndex: 2,
   },

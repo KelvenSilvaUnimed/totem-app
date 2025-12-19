@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "397a725b-b3f6-48f4-918e-56b4b6a72aa0"
+      }
+    },
+    "android": {
+      "package": "com.totemboletos"
+    }
+  }
+}

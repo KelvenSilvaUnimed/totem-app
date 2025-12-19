@@ -191,6 +191,47 @@ export default function TotemHomeScreen() {
     }
   };
 
+  const carregarEBoleto = async (item: Fatura, index: number) => {
+    const numero = getNumeroFatura(item, index);
+    setSelectedFatura(numero);
+    setStatusMessage('warn', `Carregando boleto da fatura ${numero}...`);
+    setLoading(true);
+    try {
+      const boleto = await buscarBoleto(numero);
+      const withNum = { ...boleto, numero };
+      setBoletoAtual(withNum);
+      setStatusMessage('ok', `Boleto da fatura ${numero} pronto!`);
+      return withNum;
+    } catch (error: any) {
+      setStatusMessage('err', error?.message || 'Falha ao carregar o boleto.');
+      setSelectedFatura(null);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVisualizarLinha = async (item: Fatura, index: number) => {
+    const numero = getNumeroFatura(item, index);
+    // se já carregado o mesmo boleto, apenas visualizar
+    if (boletoAtual && boletoAtual.numero === numero) {
+      await handleVisualizar();
+      return;
+    }
+    const boleto = await carregarEBoleto(item, index);
+    if (boleto) await handleVisualizar();
+  };
+
+  const handleImprimirLinha = async (item: Fatura, index: number) => {
+    const numero = getNumeroFatura(item, index);
+    if (boletoAtual && boletoAtual.numero === numero) {
+      await handleImprimir();
+      return;
+    }
+    const boleto = await carregarEBoleto(item, index);
+    if (boleto) await handleImprimir();
+  };
+
   const handleVisualizar = async () => {
     if (!boletoAtual) {
       Alert.alert('Aviso', 'Nenhum boleto carregado.');
@@ -452,51 +493,48 @@ export default function TotemHomeScreen() {
                 <View key={numero} style={[styles.faturaRow, selected && styles.faturaRowSelected]}>
                   <Text style={styles.faturaRowText}>{formatarDataFatura(item)}</Text>
                   <Text style={styles.faturaRowValue}>{formatarValorFatura(item)}</Text>
-            <TouchableOpacity
-                    style={[styles.rowActionButton, loading && styles.buttonDisabled]}
-              onPress={() => handleSelecionarFatura(item, index)}
-              disabled={loading}
-            >
-                    {selected && loading ? (
-                      <ActivityIndicator color={palette.darkText} />
-                    ) : (
-                      <Text style={styles.rowActionButtonText}>Abrir</Text>
-                    )}
-            </TouchableOpacity>
+                  <View style={styles.rowActionGroup}>
+                    <TouchableOpacity
+                      style={[styles.rowActionButton, loading && styles.buttonDisabled]}
+                      onPress={() => handleVisualizarLinha(item, index)}
+                      disabled={loading}
+                    >
+                      {selected && loading ? (
+                        <ActivityIndicator color={palette.darkText} />
+                      ) : (
+                        <Text style={styles.rowActionButtonText}>Visualizar</Text>
+                      )}
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.rowActionButton, loading && styles.buttonDisabled]}
+                      onPress={() => handleImprimirLinha(item, index)}
+                      disabled={loading}
+                    >
+                      {selected && loading ? (
+                        <ActivityIndicator color={palette.darkText} />
+                      ) : (
+                        <Text style={styles.rowActionButtonText}>Imprimir</Text>
+                      )}
+                    </TouchableOpacity>
+                    
+                  </View>
                 </View>
           );
         })}
       </ScrollView>
-      {boletoAtual && (
-        <View style={styles.actionsContainer}>
-          <Text style={styles.actionsTitle}>Boleto da fatura {selectedFatura} carregado!</Text>
-          <View style={styles.actionsGrid}>
-            <ActionButton text="Visualizar" onPress={handleVisualizar} disabled={loading} />
-            <ActionButton text="Imprimir" onPress={handleImprimir} disabled={loading} />
-            <ActionButton text="Email (em breve)" disabled />
-            <ActionButton text="WhatsApp (em breve)" disabled />
+          <View style={[styles.buttonRow, isTablet && styles.buttonRowTablet]}>
+            <SecondaryButton text="Voltar" onPress={() => {
+              setBoletoAtual(null);
+              setSelectedFatura(null);
+              setFaturas([]);
+              if (beneficiario?.tipoPessoa === 'PJ') {
+                setStep('contrato');
+              } else {
+                setStep('servicos');
+              }
+            }} disabled={loading} />
+            <SecondaryButton text="Consultar novo CPF/CNPJ" onPress={resetarFluxo} />
           </View>
-          <View style={styles.buttonRow}>
-            <SecondaryButton
-              text="Voltar"
-              onPress={() => {
-                setBoletoAtual(null);
-                setSelectedFatura(null);
-                setStep('faturas');
-              }}
-              disabled={loading}
-            />
-          </View>
-        </View>
-      )}
-      <View style={[styles.buttonRow, isTablet && styles.buttonRowTablet]}>
-        <SecondaryButton text="Voltar" onPress={() => {
-          setBoletoAtual(null);
-          setSelectedFatura(null);
-          setStep('faturas');
-        }} disabled={loading} />
-        <SecondaryButton text="Consultar novo CPF/CNPJ" onPress={resetarFluxo} />
-      </View>
         </>
       )}
     </View>
