@@ -55,6 +55,8 @@ export default function TotemHomeScreen() {
   const [boletoAtual, setBoletoAtual] = useState<BoletoResult | null>(null);
   const [showCpfInput, setShowCpfInput] = useState(false);
 
+  const [viewerVisible, setViewerVisible] = useState(false);
+  const [viewerUrl, setViewerUrl] = useState<string | null>(null);
 
   const resumoFaturas = useMemo(() => {
     if (!faturas.length) return 'Nenhuma fatura encontrada.';
