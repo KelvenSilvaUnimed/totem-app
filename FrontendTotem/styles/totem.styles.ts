@@ -58,15 +58,13 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: '700',
     letterSpacing: 0.5,
-    marginBottom: 19,
+    marginBottom: 16,
     textAlign: 'center',
   },
   muted: {
     color: '#064E4C',
     fontSize: 20,
     lineHeight: 28,
-    alignItems: 'center',
-    textAlign: 'center'
   },
   highlight: {
     color: palette.white,
@@ -167,7 +165,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    width: '100%',
+    width: '96%',
     alignSelf: 'center',
   },
   faturaHeaderText: {
@@ -178,7 +176,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   faturaRow: {
-    width: '100%',
+    width: '96%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -207,9 +205,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   rowActionGroup: {
-    flex: 1.8,
+    flex: 1.2,
     flexDirection: 'row',
-    gap: 9,
+    gap: 8,
     justifyContent: 'flex-end',
     alignItems: 'center',
   },
@@ -440,6 +438,15 @@ const styles = StyleSheet.create({
     fontSize: 24,
     letterSpacing: 1,
   },
+  fixedLayer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
+    pointerEvents: 'none',
+  },
   faturaScreenContainer: {
     backgroundColor: 'transparent',
     borderWidth: 0,
@@ -448,8 +455,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
     shadowColor: 'transparent',
     alignItems: 'center',
-    width: '115%',
-
   },
   semFaturaContainer: {
     marginTop: 20,
@@ -529,7 +534,7 @@ const styles = StyleSheet.create({
   topRightImage: {
     position: 'absolute',
     top: 0,
-    right: '-8%',
+    right: '-6%',
     width: '35%',
     height: 200,
     zIndex: 2,
@@ -557,8 +562,8 @@ const styles = StyleSheet.create({
   },
   bottomRightImage: {
     position: 'absolute',
-    bottom: '1.5%',
-    right: '-15%',
+    bottom: 0,
+    right: '-8%',
     width: '45%',
     height: '70%',
     zIndex: 2,
@@ -575,7 +580,7 @@ const styles = StyleSheet.create({
   },
   atendenteContainer: {
     position: 'absolute',
-    bottom: '-2.6%',
+    bottom: '-1.5%',
     left: 0,
     zIndex: 2,
   },
