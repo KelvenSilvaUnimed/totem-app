@@ -6,8 +6,8 @@ import {
     ImageBackground,
     Linking,
     Platform,
+    SafeAreaView,
     ScrollView,
-    Modal,
     Text,
     TextInput,
     TouchableOpacity,
@@ -25,127 +25,12 @@ import {
 } from '@/services/api.service';
 import type { Beneficiario, BoletoResult, Fatura } from '@/services/api.types';
 import styles, { palette } from '@/styles/totem.styles';
-import '@/app/(tabs)/boletoViewerStyles.css';
-import { SafeAreaView } from 'react-native-safe-area-context';
-
 
 type Step = 'cpf' | 'servicos' | 'contrato' | 'faturas';
 type StatusType = 'ok' | 'warn' | 'err';
 
-
-const BoletoPortal = ({
-  pdfUrl,
-  onClose,
-}: {
-  pdfUrl: string;
-  onClose: () => void;
-}) => {
-  if (Platform.OS !== 'web') return null;
-
-  const { createPortal } = require('react-dom');
-
-  return createPortal(
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        width: '100vw',
-        height: '100vh',
-        backgroundColor: 'rgba(0,0,0,0.85)',
-        zIndex: 2147483647,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <div
-        style={{
-          width: '96vw',
-          height: '96vh',
-          backgroundColor: '#fff',
-          borderRadius: 12,
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-        }}
-      >
-        {/* HEADER */}
-        <div
-          style={{
-            height: 64,
-            padding: '0 20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            backgroundColor: '#f5f5f5',
-            borderBottom: '1px solid #ddd',
-          }}
-        >
-          <strong>Visualização do Documento</strong>
-          <button
-            onClick={onClose}
-            style={{
-              fontSize: 18,
-              border: 'none',
-              background: 'transparent',
-              cursor: 'pointer',
-            }}
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* BODY */}
-        <div style={{ flex: 1 }}>
-          <iframe
-            src={pdfUrl}
-            title="Documento"
-            style={{
-              width: '100%',
-              height: '100%',
-              border: 'none',
-            }}
-          />
-        </div>
-
-        {/* FOOTER */}
-        <div
-          style={{
-            height: 56,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderTop: '1px solid #ddd',
-          }}
-        >
-          <button
-            onClick={() => window.open(pdfUrl, '_blank')}
-            style={{
-              padding: '10px 18px',
-              fontSize: 16,
-              cursor: 'pointer',
-            }}
-          >
-            Abrir em nova aba
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body
-  );
-};
-
-
-
-
 export default function TotemHomeScreen() {
   const { width, height } = useWindowDimensions();
-  const initialDimensions = useWindowDimensions();
-
-  const [lockedSize] = useState(() => ({
-    width: initialDimensions.width,
-    height: initialDimensions.height,
-  }));
   // Tablet: mobile com tela grande OU web em viewport de tablet
   const viewportMax = Math.max(width, height);
   const viewportMin = Math.min(width, height);
@@ -169,8 +54,7 @@ export default function TotemHomeScreen() {
   const [selectedFatura, setSelectedFatura] = useState<string | null>(null);
   const [boletoAtual, setBoletoAtual] = useState<BoletoResult | null>(null);
   const [showCpfInput, setShowCpfInput] = useState(false);
-  const [pdfModalVisible, setPdfModalVisible] = useState(false);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+
 
   const resumoFaturas = useMemo(() => {
     if (!faturas.length) return 'Nenhuma fatura encontrada.';
@@ -329,45 +213,13 @@ export default function TotemHomeScreen() {
 
   const handleVisualizarLinha = async (item: Fatura, index: number) => {
     const numero = getNumeroFatura(item, index);
-    
-    // Feedback visual imediato
-    setStatusMessage('warn', `Carregando boleto da fatura ${numero}...`);
-    setLoading(true);
-
-    try {
-      // 1. Busca os dados do boleto (sem abrir janela ainda)
-      // Se já tiver carregado na memória, usa o atual
-      let boleto = boletoAtual && boletoAtual.numero === numero ? boletoAtual : null;
-      
-      if (!boleto) {
-         boleto = await buscarBoleto(numero);
-         // Adiciona o numero ao objeto para controle local
-         boleto = { ...boleto, numero }; 
-         setBoletoAtual(boleto);
-      }
-
-      const url = boleto.remoteUrl ? getPdfViewerUrl(boleto.remoteUrl) : boleto.url;
-
-      if (Platform.OS === 'web') {
-        setPdfUrl(url);
-        setPdfModalVisible(true);
-        setStatusMessage('ok', `Visualizando fatura ${numero}.`);
-      } else {
-        const supported = await Linking.canOpenURL(url);
-        if (supported) {
-            Linking.openURL(url);
-            setStatusMessage('ok', `Boleto aberto no navegador.`);
-        } else {
-            Alert.alert('Erro', 'Não foi possível abrir o link do boleto.');
-        }
-      }
-
-    } catch (error: any) {
-      setStatusMessage('err', error?.message || 'Falha ao carregar o boleto. Tente novamente.');
-      setSelectedFatura(null);
-    } finally {
-      setLoading(false);
+    // se já carregado o mesmo boleto, apenas visualizar
+    if (boletoAtual && boletoAtual.numero === numero) {
+      await handleVisualizar();
+      return;
     }
+    const boleto = await carregarEBoleto(item, index);
+    if (boleto) await handleVisualizar();
   };
 
   const handleImprimirLinha = async (item: Fatura, index: number) => {
@@ -387,14 +239,9 @@ export default function TotemHomeScreen() {
     }
     try {
       const url = boletoAtual.remoteUrl ? getPdfViewerUrl(boletoAtual.remoteUrl) : boletoAtual.url;
-      
-      if (Platform.OS === 'web') {
-        window.open(url, '_blank');
-      } else {
-        const supported = await Linking.canOpenURL(url);
-        if (supported) Linking.openURL(url);
-        else Alert.alert('Erro', 'Não foi possível abrir o boleto.');
-      }
+      const supported = await Linking.canOpenURL(url);
+      if (supported) Linking.openURL(url);
+      else Alert.alert('Erro', 'Não foi possível abrir o boleto.');
     } catch (error: any) {
       Alert.alert('Erro', error?.message || 'Falha ao visualizar o boleto.');
     }
@@ -444,6 +291,7 @@ export default function TotemHomeScreen() {
   };
 
   const renderStatus = () => {
+    // Exibe somente mensagens de alerta/erro para não mostrar barra "Bem-vindo"
     if (!status || status.type === 'ok') return null;
     const isWarn = status.type === 'warn';
     const background = isWarn ? 'rgba(63,20,5,0.8)' : 'rgba(62,12,17,0.82)';
@@ -637,13 +485,7 @@ export default function TotemHomeScreen() {
             <Text style={styles.faturaHeaderText}>Ação</Text>
           </View>
 
-        <ScrollView 
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="none"
-        automaticallyAdjustKeyboardInsets={false}
-        contentInsetAdjustmentBehavior="never"
-        scrollEnabled={false}
-        horizontal={false} showsVerticalScrollIndicator={false} style={styles.faturaScroll}>
+          <ScrollView horizontal={false} showsVerticalScrollIndicator={false} style={styles.faturaScroll}>
         {faturas.map((item, index) => {
           const numero = getNumeroFatura(item, index);
           const selected = selectedFatura === numero;
@@ -674,7 +516,17 @@ export default function TotemHomeScreen() {
                         <Text style={styles.rowActionButtonText}>Imprimir</Text>
                       )}
                     </TouchableOpacity>
-    
+                    <TouchableOpacity
+                      style={[styles.rowActionButton, loading && styles.buttonDisabled]}
+                      onPress={() => handleSelecionarFatura(item, index)}
+                      disabled={loading}
+                    >
+                      {selected && loading ? (
+                        <ActivityIndicator color={palette.darkText} />
+                      ) : (
+                        <Text style={styles.rowActionButtonText}>Abrir</Text>
+                      )}
+                    </TouchableOpacity>
                   </View>
                 </View>
           );
@@ -701,12 +553,12 @@ export default function TotemHomeScreen() {
   return (
     <ImageBackground
       source={require('@/assets/images/fundo_.png')}
-      style={[styles.backgroundImage, { width: lockedSize.width, height: lockedSize.height, }, isTablet && styles.backgroundImageTablet]}
+      style={[styles.backgroundImage, isTablet && styles.backgroundImageTablet]}
       resizeMode="cover"
     >
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.fixedLayer} pointerEvents="none">
-        <View 
+        {/* Imagem top_left - Canto superior esquerdo */}
+        <View
           pointerEvents="none"
           style={[styles.topLeftImage, isTablet && styles.topLeftImageTablet]}
         >
@@ -717,6 +569,7 @@ export default function TotemHomeScreen() {
           />
         </View>
         
+        {/* Imagem top_right - Canto superior direito */}
         <View
           pointerEvents="none"
           style={[styles.topRightImage, isTablet && styles.topRightImageTablet]}
@@ -728,6 +581,7 @@ export default function TotemHomeScreen() {
           />
         </View>
         
+        {/* Imagem bottom_left - Canto inferior esquerdo */}
         <View
           pointerEvents="none"
           style={[styles.bottomLeftImage, isTablet && styles.bottomLeftImageTablet]}
@@ -739,6 +593,7 @@ export default function TotemHomeScreen() {
           />
         </View>
         
+        {/* Imagem bottom_right - Canto inferior direito */}
         <View
           pointerEvents="none"
           style={[styles.bottomRightImage, isTablet && styles.bottomRightImageTablet]}
@@ -750,6 +605,7 @@ export default function TotemHomeScreen() {
           />
         </View>
         
+        {/* Imagem da Atendente - Posicionada atrás do conteúdo */}
         <View
           style={[styles.atendenteContainer, isTablet && styles.atendenteContainerTablet]}
           pointerEvents="none"
@@ -764,10 +620,9 @@ export default function TotemHomeScreen() {
             resizeMode="contain"
           />
         </View>
-      </View>
         
+        {/* Conteúdo principal - Por cima da imagem */}
         <ScrollView
-          scrollEnabled={false}
           style={styles.contentWrapper}
           contentContainerStyle={[styles.scrollContent, isTablet && styles.scrollContentTablet]}
           keyboardShouldPersistTaps="handled"
@@ -795,15 +650,6 @@ export default function TotemHomeScreen() {
           </View>
         )}
       </ScrollView>
-
-      {/*>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<*/}
-      {pdfUrl && (
-        <BoletoPortal
-        pdfUrl={pdfUrl}
-        onClose={() => setPdfUrl(null)}
-        />
-      )}
-
     </SafeAreaView>
     </ImageBackground>
   );

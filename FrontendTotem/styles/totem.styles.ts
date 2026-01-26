@@ -438,15 +438,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     letterSpacing: 1,
   },
-  fixedLayer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1,
-    pointerEvents: 'none',
-  },
   faturaScreenContainer: {
     backgroundColor: 'transparent',
     borderWidth: 0,
