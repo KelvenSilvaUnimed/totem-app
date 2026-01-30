@@ -19,9 +19,21 @@ export const palette = {
 
 // Estilos otimizados para TABLET
 const styles = StyleSheet.create({
+  screenRoot: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    overflow: 'hidden',
+  },
+  backgroundLayer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    zIndex: 0,
+  },
   safeArea: {
     flex: 1,
     backgroundColor: 'transparent',
+    zIndex: 1,
   },
   scrollContent: {
     padding: 40,
@@ -225,6 +237,49 @@ const styles = StyleSheet.create({
     color: '#0b4a56',
     fontWeight: '800',
     fontSize: 16,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 980,
+    height: '90%',
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    overflow: 'hidden',
+  },
+  modalHeader: {
+    backgroundColor: '#0b5967',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  modalTitle: {
+    color: '#D6DAC0',
+    fontWeight: '700',
+    fontSize: 22,
+  },
+  modalCloseButton: {
+    backgroundColor: '#d3d94a',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  modalCloseButtonText: {
+    color: '#0b4a56',
+    fontWeight: '800',
+    fontSize: 16,
+  },
+  modalPdf: {
+    flex: 1,
+    width: '100%',
   },
   actionsContainer: {},
   actionsTitle: {},

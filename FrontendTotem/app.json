@@ -18,7 +18,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "softwareKeyboardLayoutMode": "pan",
+      "softwareKeyboardLayoutMode": "nothing",
       "package": "com.anonymous.FrontendTotem"
     },
     "web": {
