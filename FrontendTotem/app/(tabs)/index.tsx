@@ -620,7 +620,6 @@ export default function TotemHomeScreen() {
           ]}
           resizeMode="cover"
         >
-          {/* Imagem top_left - Canto superior esquerdo */}
           <View
             style={[styles.topLeftImage, isTablet && styles.topLeftImageTablet]}
           >
@@ -631,7 +630,6 @@ export default function TotemHomeScreen() {
             />
           </View>
 
-          {/* Imagem top_right - Canto superior direito */}
           <View
             style={[styles.topRightImage, isTablet && styles.topRightImageTablet]}
           >
@@ -642,7 +640,6 @@ export default function TotemHomeScreen() {
             />
           </View>
 
-          {/* Imagem bottom_left - Canto inferior esquerdo */}
           <View
             style={[styles.bottomLeftImage, isTablet && styles.bottomLeftImageTablet]}
           >
@@ -653,7 +650,6 @@ export default function TotemHomeScreen() {
             />
           </View>
 
-          {/* Imagem bottom_right - Canto inferior direito */}
           <View
             style={[styles.bottomRightImage, isTablet && styles.bottomRightImageTablet]}
           >
@@ -664,7 +660,6 @@ export default function TotemHomeScreen() {
             />
           </View>
 
-          {/* Imagem da Atendente - Posicionada atrás do conteúdo */}
           <View
             style={[styles.atendenteContainer, isTablet && styles.atendenteContainerTablet]}
           >
@@ -681,7 +676,6 @@ export default function TotemHomeScreen() {
         </ImageBackground>
       </View>
 
-      {/* Conteúdo principal - Por cima da imagem */}
       <SafeAreaView style={styles.safeArea}>
         <KeyboardAvoidingView
           style={styles.contentWrapper}
