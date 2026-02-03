@@ -19,9 +19,21 @@ export const palette = {
 
 // Estilos otimizados para TABLET
 const styles = StyleSheet.create({
+  screenRoot: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    overflow: 'hidden',
+  },
+  backgroundLayer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    zIndex: 0,
+  },
   safeArea: {
     flex: 1,
     backgroundColor: 'transparent',
+    zIndex: 1,
   },
   scrollContent: {
     padding: 40,
@@ -31,6 +43,17 @@ const styles = StyleSheet.create({
     minHeight: '100%',
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
+    zIndex: 2,
+  },
+  scrollContentTablet: {
+    paddingTop: '1%',
+    paddingBottom: '25%',
+  },
+  contentWrapper: {
+    flex: 1,
+    position: 'relative',
+    zIndex: 10,
   },
   card: {
     backgroundColor: palette.card,
@@ -39,6 +62,8 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     borderWidth: 1,
     borderColor: 'rgba(148,163,184,0.08)',
+    position: 'relative',
+    zIndex: 3,
   },
   cardTitle: {
     color: '#064E4C',
@@ -72,17 +97,23 @@ const styles = StyleSheet.create({
     color: palette.white,
     backgroundColor: '#0b1220',
     fontSize: 22,
+    position: 'relative',
+    zIndex: 3,
   },
   buttonRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    gap: 20,
-    marginTop: 28,
+    gap: 19,
+    marginTop: 16,
+  },
+  buttonRowTablet: {
+    flexWrap: 'nowrap',
+    gap: 23,
   },
   buttonColumn: {
     gap: 16,
-    marginTop: 24,
+    marginTop: 29,
   },
   primaryButton: {
     backgroundColor: palette.primary,
@@ -91,6 +122,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     minWidth: 300,
     alignItems: 'center',
+    position: 'relative',
+    zIndex: 3,
   },
   primaryButtonText: {
     color: palette.darkText,
@@ -98,14 +131,15 @@ const styles = StyleSheet.create({
     fontSize: 22,
   },
   secondaryButton: {
-    backgroundColor: palette.secondary,
+    backgroundColor: '#008C50',
     borderRadius: 16,
     paddingVertical: 20,
     paddingHorizontal: 32,
     minWidth: 300,
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#334155',
+    borderWidth: 0,
+    position: 'relative',
+    zIndex: 3,
   },
   secondaryButtonText: {
     color: palette.white,
@@ -162,7 +196,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: 14,
     paddingHorizontal: 16,
-    marginTop: 10,
+    marginTop: '0%',
     alignSelf: 'center',
   },
   faturaRowSelected: {
@@ -182,6 +216,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
   },
+  rowActionGroup: {
+    flex: 1.2,
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
   rowActionButton: {
     flex: 1,
     backgroundColor: '#d3d94a',
@@ -189,33 +230,60 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 12,
     alignItems: 'center',
+    position: 'relative',
+    zIndex: 3,
   },
   rowActionButtonText: {
     color: '#0b4a56',
     fontWeight: '800',
     fontSize: 16,
   },
-  actionsContainer: {
-    marginTop: 24,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: 'rgba(56,189,248,0.35)',
-    padding: 24,
-    backgroundColor: 'rgba(8,17,31,0.9)',
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
   },
-  actionsTitle: {
-    color: palette.white,
-    fontWeight: '600',
-    textAlign: 'center',
+  modalCard: {
+    width: '100%',
+    maxWidth: 980,
+    height: '90%',
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    overflow: 'hidden',
+  },
+  modalHeader: {
+    backgroundColor: '#0b5967',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  modalTitle: {
+    color: '#D6DAC0',
+    fontWeight: '700',
     fontSize: 22,
   },
-  actionsGrid: {
-    marginTop: 20,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 16,
-    justifyContent: 'center',
+  modalCloseButton: {
+    backgroundColor: '#d3d94a',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
   },
+  modalCloseButtonText: {
+    color: '#0b4a56',
+    fontWeight: '800',
+    fontSize: 16,
+  },
+  modalPdf: {
+    flex: 1,
+    width: '100%',
+  },
+  actionsContainer: {},
+  actionsTitle: {},
+  actionsGrid: {},
   actionButton: {
     flexBasis: '48%',
     minWidth: 200,
@@ -247,10 +315,15 @@ const styles = StyleSheet.create({
   // Estilos da tela de boas-vindas (CPF) - TABLET
   welcomeCard: {
     backgroundColor: 'transparent',
-    paddingVertical: 40,
+    paddingVertical: 24,
     paddingHorizontal: 32,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  welcomeCardTablet: {
+    paddingTop: 12,
+    paddingBottom: 16,
+    marginTop: -24,
   },
   welcomeTitle: {
     color: palette.greenDark,
@@ -329,19 +402,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexWrap: 'wrap',
   },
+  cpfButtonRowTablet: {
+    flexWrap: 'nowrap',
+    gap: 24,
+    marginTop: 20,
+  },
   cancelButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 3,
-    borderColor: palette.grayText,
+    backgroundColor: '#ffffff',
+    borderWidth: 2,
+    borderColor: palette.greenDark,
     borderRadius: 40,
-    paddingVertical: 22,
+    paddingVertical: 24,
     paddingHorizontal: 48,
+    minWidth: 300,
     alignItems: 'center',
+    position: 'relative',
+    zIndex: 5,
   },
   cancelButtonText: {
-    color: palette.grayText,
-    fontWeight: '600',
-    fontSize: 22,
+    color: palette.greenDark,
+    fontWeight: '700',
+    fontSize: 24,
+    letterSpacing: 1,
   },
   // Estilos para tela PJ - TABLET
   pjTitle: {
@@ -390,7 +472,7 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontStyle: 'italic',
     textAlign: 'center',
-    marginBottom: 32,
+    marginBottom: 12,
   },
   greenButton: {
     backgroundColor: palette.greenDark,
@@ -436,6 +518,14 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingHorizontal: 32,
     marginBottom: 32,
+    position: 'relative',
+    zIndex: 5,
+    elevation: 5,
+  },
+  formContainerTablet: {
+    marginTop: -24,
+    zIndex: 10,
+    elevation: 10,
   },
   formLabel: {
     color: palette.greenDark,
@@ -465,47 +555,92 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     height: '100%',
+    backgroundColor: '#ffffff',
+  },
+  backgroundImageTablet: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+    minHeight: '100%',
   },
   topLeftImage: {
     position: 'absolute',
     top: 0,
-    left: '10%',
-    width: '25%',
-    height: 150,
+    left: '6%',
+    width: '35%',
+    height: 200,
     zIndex: 2,
+  },
+  topLeftImageTablet: {
+    left: '1%',
+    width: '41%',
+    height: '30%',
+    top: '-10.4%'
   },
   topRightImage: {
     position: 'absolute',
     top: 0,
-    right: '-4%',
-    width: '25%',
-    height: 150,
+    right: '-6%',
+    width: '35%',
+    height: 200,
     zIndex: 2,
+  },
+  topRightImageTablet: {
+    right: '-6%',
+    width: '42%',
+    height: '25%',
+    top: '-5%'
   },
   bottomLeftImage: {
     position: 'absolute',
     bottom: 0,
-    right: '66%',
-    width: '42%',
-    height: '62%',
+    left: '-10%',
+    width: '50%',
+    height: '70%',
+    zIndex: 2,
+  },
+  bottomLeftImageTablet: {
+    left: '-1%',
+    width: '55%',
+    height: '70%',
+    bottom: '-16%',
     zIndex: 1,
   },
   bottomRightImage: {
     position: 'absolute',
-    bottom: '3%',
-    right: '-15.2%',
-    width: '40%',
-    height: '65%',
+    bottom: 0,
+    right: '-8%',
+    width: '45%',
+    height: '70%',
     zIndex: 2,
+  },
+  bottomRightImageTablet: {
+    bottom: '-11%',
+    right: '1%',
+    width: '31%',
+    height: '75%',
+  },
+  decorImageFill: {
+    width: '100%',
+    height: '100%',
   },
   atendenteContainer: {
     position: 'absolute',
-    bottom: '-2%',
+    bottom: '-1.5%',
     left: 0,
+    zIndex: 2,
+  },
+  atendenteContainerTablet: {
+    bottom: '-15.5%',
+    left: '6.2%',
     zIndex: 1,
   },
   atendenteImage: {
     zIndex: 1,
+  },
+  atendenteImageTablet: {
+    zIndex: 1,
+    transform: [{ scale: 1.28 }],
   },
 });
 

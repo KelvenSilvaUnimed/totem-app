@@ -1,16 +1,19 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Dimensions,
     Image,
     ImageBackground,
-    Linking,
+    Keyboard,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
     SafeAreaView,
     ScrollView,
     Text,
     TextInput,
     TouchableOpacity,
-    useWindowDimensions,
     View,
 } from 'react-native';
 
@@ -23,17 +26,34 @@ import {
     utils,
 } from '@/services/api.service';
 import type { Beneficiario, BoletoResult, Fatura } from '@/services/api.types';
+import PdfViewer from '@/components/pdf-viewer';
 import styles, { palette } from '@/styles/totem.styles';
 
 type Step = 'cpf' | 'servicos' | 'contrato' | 'faturas';
 type StatusType = 'ok' | 'warn' | 'err';
 
 export default function TotemHomeScreen() {
-  const { width, height } = useWindowDimensions();
+  const initialViewport = useRef(
+    Dimensions.get(Platform.OS === 'web' ? 'window' : 'screen'),
+  ).current;
+  const viewportWidth = initialViewport.width;
+  const viewportHeight = initialViewport.height;
+  // Tablet: mobile com tela grande OU web em viewport de tablet
+  const viewportMax = Math.max(viewportWidth, viewportHeight);
+  const viewportMin = Math.min(viewportWidth, viewportHeight);
+  const isWebTablet = Platform.OS === 'web' && viewportMax >= 900 && viewportMax <= 1400 && viewportMin <= 1000;
+  // Para dispositivos nativos, aceita dimensões mais amplas (portrait ou landscape)
+  const isNativeTablet =
+    Platform.OS !== 'web' &&
+    (viewportMax >= 900 || viewportMin >= 720);
+  const isTablet = isWebTablet || isNativeTablet;
+  const atendenteWidth = viewportWidth * (isTablet ? 0.44 : 0.25);
+  const atendenteHeight = viewportHeight * (isTablet ? 0.67 : 0.55);
   const [step, setStep] = useState<Step>('cpf');
   const [cpf, setCpf] = useState('');
   const [cnpj, setCnpj] = useState('');
   const [contrato, setContrato] = useState('');
+  const [contratoPF, setContratoPF] = useState('');
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<{ type: StatusType; message: string } | null>(null);
   const [beneficiario, setBeneficiario] = useState<Beneficiario | null>(null);
@@ -41,10 +61,27 @@ export default function TotemHomeScreen() {
   const [selectedFatura, setSelectedFatura] = useState<string | null>(null);
   const [boletoAtual, setBoletoAtual] = useState<BoletoResult | null>(null);
   const [showCpfInput, setShowCpfInput] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [boletoModalUrl, setBoletoModalUrl] = useState<string | null>(null);
+  const [isBoletoModalVisible, setIsBoletoModalVisible] = useState(false);
+  const [isFormFocused, setIsFormFocused] = useState(false);
+  const scrollRef = useRef<ScrollView | null>(null);
 
-  // Tamanhos responsivos baseados na tela
-  const atendenteWidth = width * 0.25;
-  const atendenteHeight = height * 0.55;
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, (event) => {
+      setKeyboardHeight(event.endCoordinates?.height || 0);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
 
   const resumoFaturas = useMemo(() => {
     if (!faturas.length) return 'Nenhuma fatura encontrada.';
@@ -88,7 +125,7 @@ export default function TotemHomeScreen() {
     try {
       const result = await lookupByCpf(digits);
       setBeneficiario(result);
-      setStep('servicos');
+      setStep(result.tipoPessoa === 'PJ' ? 'contrato' : 'servicos');
       setStatusMessage('ok', `Bem-vindo, ${utils.formatNomeCompleto(result.nome)}.`);
     } catch (error: any) {
       setStatusMessage('err', error?.message || 'Não foi possível validar o CPF.');
@@ -181,19 +218,72 @@ export default function TotemHomeScreen() {
     }
   };
 
-  const handleVisualizar = async () => {
-    if (!boletoAtual) {
+  const carregarEBoleto = async (item: Fatura, index: number) => {
+    const numero = getNumeroFatura(item, index);
+    setSelectedFatura(numero);
+    setStatusMessage('warn', `Carregando boleto da fatura ${numero}...`);
+    setLoading(true);
+    try {
+      const boleto = await buscarBoleto(numero);
+      const withNum = { ...boleto, numero };
+      setBoletoAtual(withNum);
+      setStatusMessage('ok', `Boleto da fatura ${numero} pronto!`);
+      return withNum;
+    } catch (error: any) {
+      setStatusMessage('err', error?.message || 'Falha ao carregar o boleto.');
+      setSelectedFatura(null);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVisualizarLinha = async (item: Fatura, index: number) => {
+    const numero = getNumeroFatura(item, index);
+    // se já carregado o mesmo boleto, apenas visualizar
+    if (boletoAtual && boletoAtual.numero === numero) {
+      await handleVisualizar(boletoAtual);
+      return;
+    }
+    const boleto = await carregarEBoleto(item, index);
+    if (boleto) await handleVisualizar(boleto);
+  };
+
+  const handleImprimirLinha = async (item: Fatura, index: number) => {
+    const numero = getNumeroFatura(item, index);
+    if (boletoAtual && boletoAtual.numero === numero) {
+      await handleImprimir();
+      return;
+    }
+    const boleto = await carregarEBoleto(item, index);
+    if (boleto) await handleImprimir();
+  };
+
+  const handleVisualizar = async (boletoOverride?: BoletoResult) => {
+    const boleto = boletoOverride ?? boletoAtual;
+    if (!boleto) {
       Alert.alert('Aviso', 'Nenhum boleto carregado.');
       return;
     }
-    try {
-      const url = boletoAtual.remoteUrl ? getPdfViewerUrl(boletoAtual.remoteUrl) : boletoAtual.url;
-      const supported = await Linking.canOpenURL(url);
-      if (supported) Linking.openURL(url);
-      else Alert.alert('Erro', 'Não foi possível abrir o boleto.');
-    } catch (error: any) {
-      Alert.alert('Erro', error?.message || 'Falha ao visualizar o boleto.');
+    const rawUrl = boleto.remoteUrl || boleto.url;
+    if (!rawUrl) {
+      Alert.alert('Erro', 'Não foi possível abrir o boleto.');
+      return;
     }
+    const isHttp = rawUrl.startsWith('http://') || rawUrl.startsWith('https://');
+    const isProxy = rawUrl.includes('/api/pdf');
+    const url = isHttp && !isProxy ? getPdfViewerUrl(rawUrl) : rawUrl;
+    if (!url) {
+      Alert.alert('Erro', 'Não foi possível abrir o boleto.');
+      return;
+    }
+    setBoletoModalUrl(url);
+    setIsBoletoModalVisible(true);
+  };
+
+  const handleFecharBoletoModal = () => {
+    setIsBoletoModalVisible(false);
+    setBoletoModalUrl(null);
   };
 
   const handleImprimir = async () => {
@@ -217,7 +307,7 @@ export default function TotemHomeScreen() {
         'Não foi possível enviar para a impressora automaticamente. Você pode visualizar o boleto e imprimir manualmente.',
         [
           { text: 'Cancelar', style: 'cancel' },
-          { text: 'Visualizar', onPress: handleVisualizar },
+          { text: 'Visualizar', onPress: () => handleVisualizar() },
         ],
       );
     } finally {
@@ -229,6 +319,7 @@ export default function TotemHomeScreen() {
     setCpf('');
     setCnpj('');
     setContrato('');
+    setContratoPF('');
     setBeneficiario(null);
     setFaturas([]);
     setSelectedFatura(null);
@@ -259,23 +350,17 @@ export default function TotemHomeScreen() {
       
       {showCpfInput ? (
         <View style={styles.cpfInputContainer}>
-          <TextInput
+      <TextInput
             style={styles.cpfInput}
             placeholder="000.000.000-00"
             placeholderTextColor="#999"
-            value={cpf}
-            onChangeText={(value) => setCpf(formatCpfInput(value))}
-            keyboardType="numeric"
-            maxLength={14}
+        value={cpf}
+        onChangeText={(value) => setCpf(formatCpfInput(value))}
+        keyboardType="numeric"
+        maxLength={14}
             autoFocus
-          />
+      />
           <View style={styles.cpfButtonRow}>
-            <TouchableOpacity 
-              style={styles.cancelButton} 
-              onPress={() => { setShowCpfInput(false); setCpf(''); }}
-            >
-              <Text style={styles.cancelButtonText}>Cancelar</Text>
-            </TouchableOpacity>
             <TouchableOpacity 
               style={[styles.orangeButton, loading && styles.buttonDisabled]} 
               onPress={handleLookup} 
@@ -311,20 +396,24 @@ export default function TotemHomeScreen() {
           </View>
           <Text style={styles.pjWelcome}>Bem vindo {utils.formatNomeCompleto(beneficiario?.nome || '')}!</Text>
           <Text style={styles.pjNextStep}>Próximo passo:</Text>
-          <View style={styles.buttonRow}>
-            <TouchableOpacity 
-              style={[styles.greenButton, loading && styles.buttonDisabled]} 
-              onPress={handleServicoSelecionado} 
-              disabled={loading}
-            >
-              <Text style={styles.greenButtonText}>DIGITE O NÚMERO DO CONTRATO</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={[styles.buttonRow, { marginTop: 24 }]}>
-            <LinkButton text="Não é você? Digitar outro CPF" onPress={resetarFluxo} />
-          </View>
-        </View>
-      );
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'position' : 'padding'}
+          >
+            <View style={styles.buttonRow}>
+              <TouchableOpacity 
+                style={[styles.greenButton, loading && styles.buttonDisabled]} 
+                onPress={handleServicoSelecionado} 
+                disabled={loading}
+              >
+                <Text style={styles.greenButtonText}>DIGITE O NÚMERO DO CONTRATO</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={[styles.buttonRow, { marginTop: 24 }]}>
+              <LinkButton text="Não é você? Digitar outro CPF" onPress={resetarFluxo} />
+            </View>
+          </KeyboardAvoidingView>
+    </View>
+  );
     }
 
     return (
@@ -332,23 +421,50 @@ export default function TotemHomeScreen() {
         <Text style={styles.pjTitle}>2ª via de boleto</Text>
         <View style={styles.pfBadge}>
           <Text style={styles.pfBadgeText}>PESSOA FÍSICA</Text>
-        </View>
+      </View>
         <Text style={styles.pjWelcome}>Bem vindo {utils.formatNomeCompleto(beneficiario?.nome || '')}!</Text>
         <Text style={styles.pjNextStep}>Próximo passo:</Text>
-        <View style={styles.buttonRow}>
-          <TouchableOpacity 
-            style={[styles.greenButton, loading && styles.buttonDisabled]} 
-            onPress={handleServicoSelecionado} 
-            disabled={loading}
-          >
-            <Text style={styles.greenButtonText}>BUSCAR FATURAS</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={[styles.buttonRow, { marginTop: 24 }]}>
-          <LinkButton text="Não é você? Digitar outro CPF" onPress={resetarFluxo} />
-        </View>
-      </View>
-    );
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'position' : 'padding'}
+        >
+          <View style={[styles.formContainer, isTablet && styles.formContainerTablet]}>
+            <Text style={styles.formLabel}>Número do contrato</Text>
+            <TextInput
+              style={styles.formInput}
+              placeholder="Digite o número do contrato"
+              placeholderTextColor="#999"
+              value={contratoPF}
+              onChangeText={setContratoPF}
+              keyboardType="numeric"
+              onFocus={() => {
+                setIsFormFocused(true);
+                scrollRef.current?.scrollToEnd({ animated: true });
+              }}
+              onBlur={() => setIsFormFocused(false)}
+            />
+          </View>
+          <View style={styles.buttonRow}>
+            <TouchableOpacity 
+              style={[styles.greenButton, loading && styles.buttonDisabled]} 
+              onPress={() => {
+                const contratoNumero = utils.digits(contratoPF);
+                if (!contratoNumero) {
+                  setStatusMessage('warn', 'Informe o número do contrato.');
+                  return;
+                }
+                carregarFaturas(utils.digits(beneficiario?.documento || ''), contratoNumero);
+              }} 
+              disabled={loading}
+            >
+              <Text style={styles.greenButtonText}>BUSCAR FATURAS</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={[styles.buttonRow, { marginTop: 24 }]}>
+            <LinkButton text="Não é você? Digitar outro CPF" onPress={resetarFluxo} />
+          </View>
+        </KeyboardAvoidingView>
+    </View>
+  );
   };
 
   const renderContratoStep = () => (
@@ -359,44 +475,58 @@ export default function TotemHomeScreen() {
       </View>
       <Text style={styles.pjWelcome}>Bem vindo {utils.formatNomeCompleto(beneficiario?.nome || '')}!</Text>
       
-      <View style={styles.formContainer}>
-        <Text style={styles.formLabel}>CNPJ</Text>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'position' : 'padding'}
+      >
+        <View style={[styles.formContainer, isTablet && styles.formContainerTablet]}>
+          <Text style={styles.formLabel}>CNPJ</Text>
         <TextInput
-          style={styles.formInput}
-          placeholder="00.000.000/0000-00"
-          placeholderTextColor="#999"
+            style={styles.formInput}
+            placeholder="00.000.000/0000-00"
+            placeholderTextColor="#999"
           value={cnpj}
           onChangeText={(value) => setCnpj(formatCnpjInput(value))}
           keyboardType="numeric"
           maxLength={18}
+          onFocus={() => {
+            setIsFormFocused(true);
+            scrollRef.current?.scrollToEnd({ animated: true });
+          }}
+          onBlur={() => setIsFormFocused(false)}
         />
-        <Text style={styles.formLabel}>Número do contrato</Text>
+          <Text style={styles.formLabel}>Número do contrato</Text>
         <TextInput
-          style={styles.formInput}
+            style={styles.formInput}
           placeholder="Digite o número do contrato"
-          placeholderTextColor="#999"
+            placeholderTextColor="#999"
           value={contrato}
           onChangeText={setContrato}
           keyboardType="numeric"
+          onFocus={() => {
+            setIsFormFocused(true);
+            scrollRef.current?.scrollToEnd({ animated: true });
+          }}
+          onBlur={() => setIsFormFocused(false)}
         />
-      </View>
-      
-      <View style={styles.cpfButtonRow}>
-        <TouchableOpacity 
-          style={styles.cancelButton} 
-          onPress={() => setStep('servicos')}
-          disabled={loading}
-        >
-          <Text style={styles.cancelButtonText}>Voltar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.greenButton, loading && styles.buttonDisabled]} 
-          onPress={handleBuscarFaturasPJ} 
-          disabled={loading}
-        >
-          <Text style={styles.greenButtonText}>BUSCAR FATURAS</Text>
-        </TouchableOpacity>
-      </View>
+        </View>
+        
+        <View style={[styles.cpfButtonRow, isTablet && styles.cpfButtonRowTablet]}>
+          <TouchableOpacity 
+            style={styles.cancelButton} 
+            onPress={() => setStep('servicos')}
+            disabled={loading}
+          >
+            <Text style={styles.cancelButtonText}>Voltar</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.greenButton, loading && styles.buttonDisabled]} 
+            onPress={handleBuscarFaturasPJ} 
+            disabled={loading}
+          >
+            <Text style={styles.greenButtonText}>BUSCAR FATURAS</Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
     </View>
   );
 
@@ -414,9 +544,6 @@ export default function TotemHomeScreen() {
         </View>
       ) : (
         <>
-          <Text style={[styles.muted, { marginTop: 8 }]}>
-            Esses são boletos em aberto. Toque em abrir para carregar o boleto.
-          </Text>
 
           <View style={styles.faturaHeader}>
             <Text style={styles.faturaHeaderText}>Data</Text>
@@ -425,40 +552,52 @@ export default function TotemHomeScreen() {
           </View>
 
           <ScrollView horizontal={false} showsVerticalScrollIndicator={false} style={styles.faturaScroll}>
-            {faturas.map((item, index) => {
-              const numero = getNumeroFatura(item, index);
-              const selected = selectedFatura === numero;
-              return (
+        {faturas.map((item, index) => {
+          const numero = getNumeroFatura(item, index);
+          const selected = selectedFatura === numero;
+          return (
                 <View key={numero} style={[styles.faturaRow, selected && styles.faturaRowSelected]}>
                   <Text style={styles.faturaRowText}>{formatarDataFatura(item)}</Text>
                   <Text style={styles.faturaRowValue}>{formatarValorFatura(item)}</Text>
-                  <TouchableOpacity
-                    style={[styles.rowActionButton, loading && styles.buttonDisabled]}
-                    onPress={() => handleSelecionarFatura(item, index)}
-                    disabled={loading}
-                  >
-                    {selected && loading ? (
-                      <ActivityIndicator color={palette.darkText} />
-                    ) : (
-                      <Text style={styles.rowActionButtonText}>Abrir</Text>
-                    )}
-                  </TouchableOpacity>
+                  <View style={styles.rowActionGroup}>
+                    <TouchableOpacity
+                      style={[styles.rowActionButton, loading && styles.buttonDisabled]}
+                      onPress={() => handleVisualizarLinha(item, index)}
+                      disabled={loading}
+                    >
+                      {selected && loading ? (
+                        <ActivityIndicator color={palette.darkText} />
+                      ) : (
+                        <Text style={styles.rowActionButtonText}>Visualizar</Text>
+                      )}
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.rowActionButton, loading && styles.buttonDisabled]}
+                      onPress={() => handleImprimirLinha(item, index)}
+                      disabled={loading}
+                    >
+                      {selected && loading ? (
+                        <ActivityIndicator color={palette.darkText} />
+                      ) : (
+                        <Text style={styles.rowActionButtonText}>Imprimir</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              );
-            })}
-          </ScrollView>
-          {boletoAtual && (
-            <View style={styles.actionsContainer}>
-              <Text style={styles.actionsTitle}>Boleto da fatura {selectedFatura} carregado!</Text>
-              <View style={styles.actionsGrid}>
-                <ActionButton text="👁️ Visualizar" onPress={handleVisualizar} disabled={loading} />
-                <ActionButton text="🖨️ Imprimir" onPress={handleImprimir} disabled={loading} />
-                <ActionButton text="📧 Email (em breve)" disabled />
-                <ActionButton text="💬 WhatsApp (em breve)" disabled />
-              </View>
-            </View>
-          )}
-          <View style={styles.buttonRow}>
+          );
+        })}
+      </ScrollView>
+          <View style={[styles.buttonRow, isTablet && styles.buttonRowTablet]}>
+            <SecondaryButton text="Voltar" onPress={() => {
+              setBoletoAtual(null);
+              setSelectedFatura(null);
+              setFaturas([]);
+              if (beneficiario?.tipoPessoa === 'PJ') {
+                setStep('contrato');
+              } else {
+                setStep('servicos');
+              }
+            }} disabled={loading} />
             <SecondaryButton text="Consultar novo CPF/CNPJ" onPress={resetarFluxo} />
           </View>
         </>
@@ -467,65 +606,136 @@ export default function TotemHomeScreen() {
   );
 
   return (
-    <ImageBackground
-      source={require('@/assets/images/fundo_.png')}
-      style={styles.backgroundImage}
-      resizeMode="cover"
-    >
+    <View style={[styles.screenRoot, { width: viewportWidth, height: viewportHeight }]}>
+      <View
+        pointerEvents="none"
+        style={[styles.backgroundLayer, { width: viewportWidth, height: viewportHeight }]}
+      >
+        <ImageBackground
+          source={require('@/assets/images/fundo_.png')}
+          style={[
+            styles.backgroundImage,
+            isTablet && styles.backgroundImageTablet,
+            { width: viewportWidth, height: viewportHeight },
+          ]}
+          resizeMode="cover"
+        >
+          <View
+            style={[styles.topLeftImage, isTablet && styles.topLeftImageTablet]}
+          >
+            <Image
+              source={require('@/assets/images/top_left.png')}
+              style={styles.decorImageFill}
+              resizeMode="contain"
+            />
+          </View>
+
+          <View
+            style={[styles.topRightImage, isTablet && styles.topRightImageTablet]}
+          >
+            <Image
+              source={require('@/assets/images/top_right.png')}
+              style={styles.decorImageFill}
+              resizeMode="contain"
+            />
+          </View>
+
+          <View
+            style={[styles.bottomLeftImage, isTablet && styles.bottomLeftImageTablet]}
+          >
+            <Image
+              source={require('@/assets/images/bottom_left.png')}
+              style={styles.decorImageFill}
+              resizeMode="contain"
+            />
+          </View>
+
+          <View
+            style={[styles.bottomRightImage, isTablet && styles.bottomRightImageTablet]}
+          >
+            <Image
+              source={require('@/assets/images/bottom_right.png')}
+              style={styles.decorImageFill}
+              resizeMode="contain"
+            />
+          </View>
+
+          <View
+            style={[styles.atendenteContainer, isTablet && styles.atendenteContainerTablet]}
+          >
+            <Image
+              source={require('@/assets/images/atendente.png')}
+              style={[
+                styles.atendenteImage,
+                { width: atendenteWidth, height: atendenteHeight },
+                isTablet && styles.atendenteImageTablet,
+              ]}
+              resizeMode="contain"
+            />
+          </View>
+        </ImageBackground>
+      </View>
+
       <SafeAreaView style={styles.safeArea}>
-        {/* Imagem top_left - Canto superior esquerdo */}
-        <Image
-          source={require('@/assets/images/top_left.png')}
-          style={styles.topLeftImage}
-          resizeMode="contain"
-        />
-        
-        {/* Imagem top_right - Canto superior direito */}
-        <Image
-          source={require('@/assets/images/top_right.png')}
-          style={styles.topRightImage}
-          resizeMode="contain"
-        />
-        
-        {/* Imagem bottom_left - Canto inferior esquerdo */}
-        <Image
-          source={require('@/assets/images/bottom_left.png')}
-          style={styles.bottomLeftImage}
-          resizeMode="contain"
-        />
-        
-        {/* Imagem bottom_right - Canto inferior direito */}
-        <Image
-          source={require('@/assets/images/bottom_right.png')}
-          style={styles.bottomRightImage}
-          resizeMode="contain"
-        />
-        
-        {/* Imagem da Atendente - Posicionada atrás do conteúdo */}
-        <View style={styles.atendenteContainer}>
-          <Image
-            source={require('@/assets/images/atendente.png')}
-            style={[styles.atendenteImage, { width: atendenteWidth, height: atendenteHeight }]}
-            resizeMode="contain"
-          />
-        </View>
-        
-        {/* Conteúdo principal - Por cima da imagem */}
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          {renderStatus()}
-          {step === 'cpf' && renderCPFStep()}
-          {step === 'servicos' && renderServicosStep()}
-          {step === 'contrato' && renderContratoStep()}
-          {step === 'faturas' && renderFaturasStep()}
-          {loading && (
-            <View style={styles.loading}>
-              <Text style={styles.loadingText}>Processando...</Text>
-              <ActivityIndicator color={palette.primary} style={{ marginLeft: 8 }} />
-            </View>
-          )}
-        </ScrollView>
+        <KeyboardAvoidingView
+          style={styles.contentWrapper}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <ScrollView
+            ref={scrollRef}
+            contentContainerStyle={[
+              styles.scrollContent,
+              isTablet && styles.scrollContentTablet,
+              keyboardHeight > 0 && { paddingBottom: keyboardHeight + 24 },
+              isFormFocused && { paddingBottom: Math.max(keyboardHeight, 420) },
+            ]}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {renderStatus()}
+            {step === 'cpf' && renderCPFStep()}
+            {step === 'servicos' && renderServicosStep()}
+            {step === 'contrato' && (
+              <View style={isTablet ? styles.welcomeCardTablet : undefined}>
+                {renderContratoStep()}
+              </View>
+            )}
+            {step === 'faturas' && (
+              <View style={isTablet ? styles.welcomeCardTablet : undefined}>
+                {renderFaturasStep()}
+              </View>
+            )}
+            {loading && (
+              <View style={styles.loading}>
+                <Text style={styles.loadingText}>Processando...</Text>
+                <ActivityIndicator color={palette.primary} style={{ marginLeft: 8 }} />
+              </View>
+            )}
+          </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
-    </ImageBackground>
+      <Modal
+        visible={isBoletoModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={handleFecharBoletoModal}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Boleto</Text>
+              <TouchableOpacity style={styles.modalCloseButton} onPress={handleFecharBoletoModal}>
+                <Text style={styles.modalCloseButtonText}>Fechar</Text>
+              </TouchableOpacity>
+            </View>
+            <PdfViewer
+              source={boletoModalUrl ? { uri: boletoModalUrl } : null}
+              style={styles.modalPdf}
+            />
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 }
 
