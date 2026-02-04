@@ -6,8 +6,8 @@ type Props = {
 };
 
 export default function PdfViewer({ source, style }: Props) {
-  if (!source) return null;
   const viewerHtml = useMemo(() => {
+    if (!source?.uri) return '';
     const safeUrl = JSON.stringify(source.uri);
     return `<!doctype html>
 <html>
@@ -62,7 +62,9 @@ export default function PdfViewer({ source, style }: Props) {
     </script>
   </body>
 </html>`;
-  }, [source.uri]);
+  }, [source?.uri]);
+
+  if (!source) return null;
 
   return (
     <iframe

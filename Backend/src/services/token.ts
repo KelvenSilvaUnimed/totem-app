@@ -1,5 +1,5 @@
 import { fetch } from 'undici';
-import { CONFIG } from '../config/env';
+import { CONFIG } from '../config/env.js';
 
 
 const OAUTH_URL = 'https://api.unimedpatos.sgusuite.com.br/oauth2/token';

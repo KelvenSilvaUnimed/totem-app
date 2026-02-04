@@ -55,7 +55,14 @@ SMTP_TLS_REJECT_UNAUTHORIZED: z
 
 // Segurança
 FRAME_ANCESTORS: z.string().default(DEFAULT_FRAME_ANCESTORS),
-CORS_ORIGINS: z.string().default(DEFAULT_CORS_ORIGINS)
+CORS_ORIGINS: z.string().default(DEFAULT_CORS_ORIGINS),
+
+// ImpressÃ£o
+PRINT_HOST: z.string().optional(),
+PRINT_PORT: z.coerce.number().int().positive().default(9100),
+PRINT_QUEUE: z.string().optional(),
+PRINT_SERVICE_URL: z.string().optional(),
+PRINT_PROTOCOL: z.enum(['raw', 'lpr', 'ipp']).default('raw')
 });
 
 

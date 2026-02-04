@@ -33,11 +33,11 @@ type Step = 'cpf' | 'servicos' | 'contrato' | 'faturas';
 type StatusType = 'ok' | 'warn' | 'err';
 
 export default function TotemHomeScreen() {
-  const initialViewport = useRef(
+  const [viewport, setViewport] = useState(() =>
     Dimensions.get(Platform.OS === 'web' ? 'window' : 'screen'),
-  ).current;
-  const viewportWidth = initialViewport.width;
-  const viewportHeight = initialViewport.height;
+  );
+  const viewportWidth = viewport.width || (Platform.OS === 'web' ? window.innerWidth : 0);
+  const viewportHeight = viewport.height || (Platform.OS === 'web' ? window.innerHeight : 0);
   // Tablet: mobile com tela grande OU web em viewport de tablet
   const viewportMax = Math.max(viewportWidth, viewportHeight);
   const viewportMin = Math.min(viewportWidth, viewportHeight);
@@ -52,7 +52,7 @@ export default function TotemHomeScreen() {
   const [step, setStep] = useState<Step>('cpf');
   const [cpf, setCpf] = useState('');
   const [cnpj, setCnpj] = useState('');
-  const [contrato, setContrato] = useState('');
+  const [contrato, setcontrato] = useState('');
   const [contratoPF, setContratoPF] = useState('');
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<{ type: StatusType; message: string } | null>(null);
@@ -68,6 +68,10 @@ export default function TotemHomeScreen() {
   const scrollRef = useRef<ScrollView | null>(null);
 
   useEffect(() => {
+    const onChange = ({ window }: { window: { width: number; height: number } }) => {
+      if (window?.width && window?.height) setViewport(window);
+    };
+    const subscription = Dimensions.addEventListener('change', onChange);
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
     const showSub = Keyboard.addListener(showEvent, (event) => {
@@ -77,6 +81,7 @@ export default function TotemHomeScreen() {
       setKeyboardHeight(0);
     });
     return () => {
+      subscription?.remove?.();
       showSub.remove();
       hideSub.remove();
     };
@@ -88,7 +93,7 @@ export default function TotemHomeScreen() {
     return `Encontramos ${faturas.length} fatura${faturas.length > 1 ? 's' : ''} em aberto.`;
   }, [faturas]);
 
-  const isPJ = beneficiario?.tipoPessoa === 'PJ';
+  const isPJ = beneficiario?.tipo_plano === 'PJ';
 
   const setStatusMessage = (type: StatusType, message: string) => setStatus({ type, message });
 
@@ -125,8 +130,8 @@ export default function TotemHomeScreen() {
     try {
       const result = await lookupByCpf(digits);
       setBeneficiario(result);
-      setStep(result.tipoPessoa === 'PJ' ? 'contrato' : 'servicos');
-      setStatusMessage('ok', `Bem-vindo, ${utils.formatNomeCompleto(result.nome)}.`);
+      setStep(result.tipo_plano === 'PJ' ? 'contrato' : 'servicos');
+      setStatusMessage('ok', `Bem-vindo, ${utils.formatNomeCompleto(result.nome_titular)}.`);
     } catch (error: any) {
       setStatusMessage('err', error?.message || 'Não foi possível validar o CPF.');
     } finally {
@@ -156,13 +161,13 @@ export default function TotemHomeScreen() {
       return;
     }
 
-    if (beneficiario.tipoPessoa === 'PJ') {
+    if (beneficiario.tipo_plano === 'PJ') {
       setStep('contrato');
       return;
     }
 
-    const contratoNumero = beneficiario.contrato || beneficiario.documento;
-    carregarFaturas(utils.digits(beneficiario.documento), utils.digits(contratoNumero));
+    const contratoNumero = beneficiario.registro_ans || beneficiario.cpf_titular;
+    carregarFaturas(utils.digits(beneficiario.cpf_titular), utils.digits(contratoNumero));
   };
 
   const handleBuscarFaturasPJ = () => {
@@ -318,7 +323,7 @@ export default function TotemHomeScreen() {
   const resetarFluxo = () => {
     setCpf('');
     setCnpj('');
-    setContrato('');
+    setcontrato('');
     setContratoPF('');
     setBeneficiario(null);
     setFaturas([]);
@@ -385,7 +390,7 @@ export default function TotemHomeScreen() {
   );
 
   const renderServicosStep = () => {
-    const isPessoaJuridica = beneficiario?.tipoPessoa === 'PJ';
+    const isPessoaJuridica = beneficiario?.tipo_plano === 'PJ';
     
     if (isPessoaJuridica) {
       return (
@@ -394,7 +399,7 @@ export default function TotemHomeScreen() {
           <View style={styles.pjBadge}>
             <Text style={styles.pjBadgeText}>PESSOA JURÍDICA</Text>
           </View>
-          <Text style={styles.pjWelcome}>Bem vindo {utils.formatNomeCompleto(beneficiario?.nome || '')}!</Text>
+          <Text style={styles.pjWelcome}>Bem vindo {utils.formatNomeCompleto(beneficiario?.nome_titular || '')}!</Text>
           <Text style={styles.pjNextStep}>Próximo passo:</Text>
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'position' : 'padding'}
@@ -405,7 +410,7 @@ export default function TotemHomeScreen() {
                 onPress={handleServicoSelecionado} 
                 disabled={loading}
               >
-                <Text style={styles.greenButtonText}>DIGITE O NÚMERO DO CONTRATO</Text>
+                <Text style={styles.greenButtonText}>DIGITE O NÚMERO DO contrato</Text>
               </TouchableOpacity>
             </View>
             <View style={[styles.buttonRow, { marginTop: 24 }]}>
@@ -422,7 +427,7 @@ export default function TotemHomeScreen() {
         <View style={styles.pfBadge}>
           <Text style={styles.pfBadgeText}>PESSOA FÍSICA</Text>
       </View>
-        <Text style={styles.pjWelcome}>Bem vindo {utils.formatNomeCompleto(beneficiario?.nome || '')}!</Text>
+        <Text style={styles.pjWelcome}>Bem vindo {utils.formatNomeCompleto(beneficiario?.nome_titular || '')}!</Text>
         <Text style={styles.pjNextStep}>Próximo passo:</Text>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'position' : 'padding'}
@@ -452,7 +457,7 @@ export default function TotemHomeScreen() {
                   setStatusMessage('warn', 'Informe o número do contrato.');
                   return;
                 }
-                carregarFaturas(utils.digits(beneficiario?.documento || ''), contratoNumero);
+                carregarFaturas(utils.digits(beneficiario?.cpf_titular || ''), contratoNumero);
               }} 
               disabled={loading}
             >
@@ -473,7 +478,7 @@ export default function TotemHomeScreen() {
       <View style={styles.pjBadge}>
         <Text style={styles.pjBadgeText}>PESSOA JURÍDICA</Text>
       </View>
-      <Text style={styles.pjWelcome}>Bem vindo {utils.formatNomeCompleto(beneficiario?.nome || '')}!</Text>
+      <Text style={styles.pjWelcome}>Bem vindo {utils.formatNomeCompleto(beneficiario?.nome_titular || '')}!</Text>
       
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'position' : 'padding'}
@@ -500,7 +505,7 @@ export default function TotemHomeScreen() {
           placeholder="Digite o número do contrato"
             placeholderTextColor="#999"
           value={contrato}
-          onChangeText={setContrato}
+          onChangeText={setcontrato}
           keyboardType="numeric"
           onFocus={() => {
             setIsFormFocused(true);
@@ -592,7 +597,7 @@ export default function TotemHomeScreen() {
               setBoletoAtual(null);
               setSelectedFatura(null);
               setFaturas([]);
-              if (beneficiario?.tipoPessoa === 'PJ') {
+              if (beneficiario?.tipo_plano === 'PJ') {
                 setStep('contrato');
               } else {
                 setStep('servicos');

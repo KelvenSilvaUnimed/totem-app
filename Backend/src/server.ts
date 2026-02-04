@@ -22,26 +22,38 @@ async function build() {
   await app.register(securityPlugin);
   await app.register(mailerPlugin);
 
+  const isAllowedOrigin = (origin?: string) => {
+    if (!origin) return false;
+    if (CONFIG.RAW_CORS_ORIGINS.includes('*')) return true;
+    return CONFIG.RAW_CORS_ORIGINS.includes(origin);
+  };
+
+  // Fallback CORS for all responses (garante header mesmo fora do plugin)
   app.addHook('onRequest', async (req, reply) => {
     if (req.method === 'OPTIONS') {
-      const origin = (req.headers.origin as string) || '*';
-      reply
-        .header('Access-Control-Allow-Origin', origin === 'null' ? '*' : origin)
-        .header('Vary', 'Origin')
-        .header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-        .header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept')
-        .code(204)
-        .send();
+      const origin = req.headers.origin as string | undefined;
+      if (isAllowedOrigin(origin)) {
+        reply
+          .header('Access-Control-Allow-Origin', origin || '*')
+          .header('Vary', 'Origin')
+          .header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+          .header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept')
+          .code(204)
+          .send();
+        return;
+      }
     }
   });
 
   app.addHook('onSend', async (req, reply, payload) => {
-    const origin = (req.headers.origin as string) || '*';
-    reply
-      .header('Access-Control-Allow-Origin', origin === 'null' ? '*' : origin)
-      .header('Vary', 'Origin')
-      .header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-      .header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
+    const origin = req.headers.origin as string | undefined;
+    if (isAllowedOrigin(origin)) {
+      reply
+        .header('Access-Control-Allow-Origin', origin || '*')
+        .header('Vary', 'Origin')
+        .header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        .header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
+    }
     return payload;
   });
 

@@ -7,48 +7,39 @@ const API_PESSOAS =
   'https://api.unimedpatos.sgusuite.com.br/api/procedure/p_prcssa_dados/0177-valida-nome-benef';
 
 export type PessoaRecord = {
-  carteirinha?: string;
-  contrato?: string;
-  cod_pessoa?: string;
-  tip_pessoa?: 'F' | 'J';
-  nome_pessoa?: string;
-  nome_mae?: string;
-  dt_nasc?: string;
-  doc_pessoa_s_formatacao?: string;
-  doc_pessoa_formatado?: string;
+  nome_titular?: string;
+  cpf_titular?: string;
+  tipo_plano?: string;
+  registro_ans?: string;
+  codigo_pessoa_titular?: string;
+  data_nascimento_titular?: string;
+  codigo_resp_financeiro?: string;
+  nome_resp_financeiro?: string;
+  cpf_resp_financeiro?: string;
+  possui_resp_financeiro?: string;
+  pes_cod?: string;
+  nome_empresa?: string;
+  cnpj_caepf_empresa?: string;
 };
 
 function gerarMockPessoa(documento: string): PessoaRecord {
   const digits = onlyDigits(documento) || '00000000000';
   const isPJ = digits.length > 11;
-  const nomeBase = isPJ ? 'Empresa' : 'Pessoa';
   return {
-    tip_pessoa: isPJ ? 'J' : 'F',
-    nome_pessoa: `${nomeBase} ${digits.slice(-4)}`,
-    contrato: `CT${digits.slice(-6) || '000001'}`,
-    cod_pessoa: digits.slice(-6) || '123456',
-    dt_nasc: isPJ ? undefined : '1990-01-01',
-    carteirinha: `M${digits.slice(-8) || '00000000'}`,
-    doc_pessoa_s_formatacao: digits,
-    doc_pessoa_formatado: documento,
+    nome_titular: `Pessoa ${digits.slice(-4)}`,
+    cpf_titular: digits,
+    tipo_plano: isPJ ? 'PJ' : 'PF',
+    registro_ans: `ANS${digits.slice(-6)}`,
+    codigo_pessoa_titular: digits.slice(-5),
+    data_nascimento_titular: '01/01/1990',
+    codigo_resp_financeiro: '',
+    nome_resp_financeiro: '',
+    cpf_resp_financeiro: '',
+    possui_resp_financeiro: 'N',
+    pes_cod: digits.slice(-6),
+    nome_empresa: isPJ ? `Empresa ${digits.slice(-4)}` : '',
+    cnpj_caepf_empresa: isPJ ? digits.padStart(14, '0') : '',
   };
-}
-
-function toIsoDate(dateStr?: string) {
-  if (!dateStr) return undefined;
-  const parts = dateStr.split('/');
-  if (parts.length === 3) {
-    const [dd, mm, yyyy] = parts;
-    if (dd && mm && yyyy) {
-      return `${yyyy.padStart(4, '0')}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
-    }
-  }
-  return dateStr;
-}
-
-function mapTipoPlanoToPessoa(t?: string): 'F' | 'J' {
-  if (!t) return 'F';
-  return t.toUpperCase() === 'PJ' ? 'J' : 'F';
 }
 
 export async function consultarPessoaPorDocumento(
@@ -61,7 +52,7 @@ export async function consultarPessoaPorDocumento(
     const fieldName = CONFIG.PESSOAS_DOC_FIELD || 'documento';
     const digits = onlyDigits(documento);
     const body: Record<string, any> = {
-      [fieldName]: digits, // manter string para nǜo perder zeros à esquerda
+      [fieldName]: digits,
     };
 
     const r = await fetch(API_PESSOAS, {
@@ -83,20 +74,26 @@ export async function consultarPessoaPorDocumento(
 
     // Seleciona pelo CPF informado para evitar pegar o registro errado.
     const selected =
-      content.find((item) => onlyDigits(item?.cpf) === digits) || content[0] || null;
+      content.find((item) => onlyDigits(item?.cpf_titular || item?.cpf) === digits) ||
+      content[0] ||
+      null;
 
     if (!selected) return null;
 
-    const normalizedDocumento = onlyDigits(selected.cpf || documento) || digits;
     return {
-      tip_pessoa: mapTipoPlanoToPessoa(selected?.tipo_plano || selected?.tip_pessoa),
-      nome_pessoa: selected?.nome || selected?.nome_pessoa,
-      contrato: selected?.registro_ans?.trim?.() || selected?.contrato,
-      cod_pessoa: selected?.codigo_pessoa || selected?.cod_pessoa,
-      dt_nasc: toIsoDate(selected?.data_nascimento || selected?.dt_nasc),
-      carteirinha: selected?.carteirinha,
-      doc_pessoa_s_formatacao: normalizedDocumento,
-      doc_pessoa_formatado: selected?.cpf || documento,
+      nome_titular: selected?.nome_titular || selected?.nome || selected?.nome_pessoa,
+      cpf_titular: selected?.cpf_titular || selected?.cpf || documento,
+      tipo_plano: selected?.tipo_plano || selected?.tip_pessoa,
+      registro_ans: selected?.registro_ans?.trim?.() || selected?.contrato,
+      codigo_pessoa_titular: selected?.codigo_pessoa_titular || selected?.codigo_pessoa || selected?.cod_pessoa,
+      data_nascimento_titular: selected?.data_nascimento_titular || selected?.data_nascimento || selected?.dt_nasc,
+      codigo_resp_financeiro: selected?.codigo_resp_financeiro ?? '',
+      nome_resp_financeiro: selected?.nome_resp_financeiro ?? '',
+      cpf_resp_financeiro: selected?.cpf_resp_financeiro ?? '',
+      possui_resp_financeiro: selected?.possui_resp_financeiro ?? 'N',
+      pes_cod: selected?.pes_cod ?? selected?.codigo_pessoa ?? selected?.cod_pessoa,
+      nome_empresa: selected?.nome_empresa ?? '',
+      cnpj_caepf_empresa: selected?.cnpj_caepf_empresa ?? '',
     };
   };
 

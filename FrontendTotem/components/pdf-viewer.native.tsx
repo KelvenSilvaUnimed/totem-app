@@ -9,7 +9,6 @@ type Props = {
 };
 
 export default function PdfViewer({ source, style }: Props) {
-  if (!source) return null;
   const [localUri, setLocalUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -52,6 +51,8 @@ export default function PdfViewer({ source, style }: Props) {
       isActive = false;
     };
   }, [source?.uri]);
+
+  if (!source) return null;
 
   if (loading) {
     return (

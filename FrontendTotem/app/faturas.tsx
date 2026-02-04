@@ -1,4 +1,4 @@
-import { Image } from 'expo-image';
+﻿import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -23,9 +23,9 @@ import { colors, styles } from '@/styles/faturas.styles';
 
 export default function FaturasScreen() {
   const params = useLocalSearchParams<{
-    nome: string;
-    documento: string;
-    contrato: string;
+    nome_titular: string;
+    cpf_titular: string;
+    registro_ans: string;
     faturas: string;
   }>();
 
@@ -34,7 +34,7 @@ export default function FaturasScreen() {
   const [boletoAtual, setBoletoAtual] = useState<BoletoResult | null>(null);
 
   const faturas: Fatura[] = params.faturas ? JSON.parse(params.faturas) : [];
-  const nomeFormatado = utils.formatNomeCompleto(params.nome || '');
+  const nomeFormatado = utils.formatNomeCompleto(params.nome_titular || '');
 
   const getNumeroFatura = (fatura: Fatura, index: number): string => {
     return (
@@ -90,7 +90,7 @@ export default function FaturasScreen() {
 
     try {
       let url = boletoAtual.url;
-      
+
       // Se for URL remota, usar o proxy/viewer
       if (boletoAtual.kind === 'remote' && boletoAtual.remoteUrl) {
         url = getPdfViewerUrl(boletoAtual.remoteUrl);
@@ -101,7 +101,7 @@ export default function FaturasScreen() {
       if (supported) {
         await Linking.openURL(url);
       } else {
-        Alert.alert('Erro', 'Não foi possível abrir o boleto.');
+        Alert.alert('Erro', 'Nao foi possivel abrir o boleto.');
       }
     } catch (err: any) {
       Alert.alert('Erro', err?.message || 'Falha ao visualizar o boleto.');
@@ -127,10 +127,10 @@ export default function FaturasScreen() {
         `Enviado para a impressora${result.printer ? ` (${result.printer})` : ''}.`
       );
     } catch (err: any) {
-      // Fallback: tentar abrir para impressão manual
+      // Fallback: tentar abrir para impressao manual
       Alert.alert(
-        'Atenção',
-        'Não foi possível enviar para a impressora automaticamente. Você pode visualizar o boleto e imprimir manualmente.',
+        'Atencao',
+        'Nao foi possivel enviar para a impressora automaticamente. Voce pode visualizar o boleto e imprimir manualmente.',
         [
           { text: 'Cancelar', style: 'cancel' },
           { text: 'Visualizar', onPress: handleVisualizarBoleto },
@@ -189,12 +189,12 @@ export default function FaturasScreen() {
         />
       </View>
 
-      {/* Conteúdo principal */}
+      {/* Conteudo principal */}
       <View style={styles.contentContainer}>
         <Text style={styles.title}>FATURAS EM ABERTO</Text>
 
         <Text style={styles.subtitle}>
-          Olá, <Text style={styles.highlight}>{nomeFormatado}</Text>!
+          Ola, <Text style={styles.highlight}>{nomeFormatado}</Text>!
         </Text>
         <Text style={styles.info}>
           Encontramos {faturas.length} fatura{faturas.length > 1 ? 's' : ''} em
@@ -214,7 +214,7 @@ export default function FaturasScreen() {
           contentContainerStyle={styles.faturasList}
         />
 
-        {/* Ações do boleto */}
+        {/* Acoes do boleto */}
         {boletoAtual && (
           <View style={styles.actionsContainer}>
             <Text style={styles.actionsTitle}>
@@ -261,7 +261,7 @@ export default function FaturasScreen() {
           </View>
         )}
 
-        {/* Botão novo CPF */}
+        {/* Botao novo CPF */}
         <TouchableOpacity style={styles.newCpfButton} onPress={handleNovoCpf}>
           <Text style={styles.newCpfText}>Consultar novo CPF/CNPJ</Text>
         </TouchableOpacity>

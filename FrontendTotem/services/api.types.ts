@@ -1,12 +1,20 @@
-// Tipos e interfaces para a API do Totem
+﻿// Tipos e interfaces para a API do Totem
 
-// Resposta do endpoint de lookup (identificação do beneficiário)
+// Resposta do endpoint de lookup (identificacao do beneficiario)
 export interface Beneficiario {
-  nome: string;
-  documento: string;
-  contrato?: string;
-  tipoPessoa: 'PF' | 'PJ';
-  tipoPlano?: string;
+  nome_titular?: string;
+  cpf_titular?: string;
+  tipo_plano?: string;
+  registro_ans?: string;
+  codigo_pessoa_titular?: string;
+  data_nascimento_titular?: string;
+  codigo_resp_financeiro?: string;
+  nome_resp_financeiro?: string;
+  cpf_resp_financeiro?: string;
+  possui_resp_financeiro?: string;
+  pes_cod?: string;
+  nome_empresa?: string;
+  cnpj_caepf_empresa?: string;
 }
 
 // Fatura em aberto
@@ -59,4 +67,3 @@ export interface ApiError {
   error: string;
   message?: string;
 }
-

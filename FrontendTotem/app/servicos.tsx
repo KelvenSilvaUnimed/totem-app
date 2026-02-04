@@ -1,4 +1,4 @@
-import { Image } from 'expo-image';
+﻿import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -17,11 +17,10 @@ import { colors, styles } from '@/styles/servicos.styles';
 
 export default function ServicosScreen() {
   const params = useLocalSearchParams<{
-    nome: string;
-    documento: string;
-    tipoPessoa: string;
-    contrato: string;
-    tipoPlano: string;
+    nome_titular: string;
+    cpf_titular: string;
+    tipo_plano: string;
+    registro_ans: string;
   }>();
 
   const [loading, setLoading] = useState(false);
@@ -30,16 +29,15 @@ export default function ServicosScreen() {
   const [contrato, setContrato] = useState('');
 
   const beneficiario: Beneficiario = {
-    nome: params.nome || '',
-    documento: params.documento || '',
-    tipoPessoa: (params.tipoPessoa as 'PF' | 'PJ') || 'PF',
-    contrato: params.contrato,
-    tipoPlano: params.tipoPlano,
+    nome_titular: params.nome_titular || '',
+    cpf_titular: params.cpf_titular || '',
+    tipo_plano: params.tipo_plano || 'PF',
+    registro_ans: params.registro_ans,
   };
 
-  const isPJ = beneficiario.tipoPessoa === 'PJ';
-  const nomeFormatado = utils.formatNomeCompleto(beneficiario.nome);
-  const tipoPlanoDescricao = isPJ ? 'Pessoa Jurídica' : 'Pessoa Física';
+  const isPJ = (beneficiario.tipo_plano || '').toUpperCase() === 'PJ';
+  const nomeFormatado = utils.formatNomeCompleto(beneficiario.nome_titular || '');
+  const tipoPlanoDescricao = isPJ ? 'Pessoa Juridica' : 'Pessoa Fisica';
 
   const formatCNPJ = (value: string) => {
     const numbers = value.replace(/\D/g, '');
@@ -57,7 +55,8 @@ export default function ServicosScreen() {
     }
 
     // PF - buscar faturas diretamente
-    await buscarFaturasENavegar(beneficiario.documento, beneficiario.contrato || beneficiario.documento);
+    const contratoBase = beneficiario.registro_ans || beneficiario.cpf_titular || '';
+    await buscarFaturasENavegar(beneficiario.cpf_titular || '', contratoBase);
   };
 
   const handleBuscarFaturasPJ = async () => {
@@ -65,12 +64,12 @@ export default function ServicosScreen() {
     const contratoDigits = utils.digits(contrato);
 
     if (cnpjDigits.length !== 14) {
-      Alert.alert('Erro', 'Digite um CNPJ válido com 14 números.');
+      Alert.alert('Erro', 'Digite um CNPJ valido com 14 numeros.');
       return;
     }
 
     if (!contratoDigits) {
-      Alert.alert('Erro', 'Digite o número do contrato.');
+      Alert.alert('Erro', 'Digite o numero do contrato.');
       return;
     }
 
@@ -86,7 +85,7 @@ export default function ServicosScreen() {
       if (!faturas || faturas.length === 0) {
         Alert.alert(
           'Nenhuma fatura encontrada',
-          'Não encontramos faturas em aberto para o documento informado.',
+          'Nao encontramos faturas em aberto para o documento informado.',
           [{ text: 'OK' }]
         );
         return;
@@ -96,9 +95,9 @@ export default function ServicosScreen() {
       router.push({
         pathname: '/faturas',
         params: {
-          nome: beneficiario.nome,
-          documento: cpfCnpj,
-          contrato: contratoNum,
+          nome_titular: beneficiario.nome_titular,
+          cpf_titular: cpfCnpj,
+          registro_ans: contratoNum,
           faturas: JSON.stringify(faturas),
         },
       });
@@ -126,24 +125,24 @@ export default function ServicosScreen() {
         />
       </View>
 
-      {/* Conteúdo principal */}
+      {/* Conteudo principal */}
       <View style={styles.contentContainer}>
         <Text style={styles.title}>TOTEM DE ATENDIMENTO</Text>
 
         <Text style={styles.greeting}>
-          Olá, <Text style={styles.highlight}>{nomeFormatado}</Text>!
+          Ola, <Text style={styles.highlight}>{nomeFormatado}</Text>!
         </Text>
         <Text style={styles.info}>
           Identificamos seu plano como{' '}
           <Text style={styles.highlight}>
-            {beneficiario.tipoPessoa} - {tipoPlanoDescricao}
+            {(beneficiario.tipo_plano || '').toUpperCase()} - {tipoPlanoDescricao}
           </Text>
         </Text>
 
         {showCnpjInput ? (
           <View style={styles.formContainer}>
             <Text style={styles.formLabel}>
-              Por se tratar de um contrato PJ, informe o CNPJ e o número do contrato:
+              Por se tratar de um contrato PJ, informe o CNPJ e o numero do contrato:
             </Text>
 
             <TextInput
@@ -158,7 +157,7 @@ export default function ServicosScreen() {
 
             <TextInput
               style={styles.input}
-              placeholder="Número do Contrato"
+              placeholder="Numero do Contrato"
               placeholderTextColor={colors.placeholder}
               value={contrato}
               onChangeText={setContrato}
@@ -189,7 +188,7 @@ export default function ServicosScreen() {
           </View>
         ) : (
           <>
-            <Text style={styles.question}>Qual serviço deseja realizar hoje?</Text>
+            <Text style={styles.question}>Qual servico deseja realizar hoje?</Text>
 
             <View style={styles.servicesGrid}>
               <TouchableOpacity
@@ -201,7 +200,7 @@ export default function ServicosScreen() {
                   <ActivityIndicator color={colors.white} />
                 ) : (
                   <Text style={styles.serviceButtonText}>
-                    📄 Emissão de 2ª via de boletos
+                    Emissao de 2a via de boletos
                   </Text>
                 )}
               </TouchableOpacity>
@@ -211,7 +210,7 @@ export default function ServicosScreen() {
                 disabled
               >
                 <Text style={styles.disabledServiceText}>
-                  📋 Guias (em desenvolvimento)
+                  Guias (em desenvolvimento)
                 </Text>
               </TouchableOpacity>
 
@@ -220,13 +219,13 @@ export default function ServicosScreen() {
                 disabled
               >
                 <Text style={styles.disabledServiceText}>
-                  🩺 Consultas (em desenvolvimento)
+                  Consultas (em desenvolvimento)
                 </Text>
               </TouchableOpacity>
             </View>
 
             <TouchableOpacity style={styles.linkButton} onPress={handleTrocarCpf}>
-              <Text style={styles.linkText}>Não é você? Digitar outro CPF</Text>
+              <Text style={styles.linkText}>Nao e voce? Digitar outro CPF</Text>
             </TouchableOpacity>
           </>
         )}

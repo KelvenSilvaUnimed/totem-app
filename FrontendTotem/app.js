@@ -1,4 +1,4 @@
-"use strict";
+﻿"use strict";
 
 const API_BASE =
   window.location.protocol.startsWith("http") && window.location.host
@@ -129,7 +129,7 @@ function formatarNumeroFatura(v, fallback) { if (v == null) return fallback; if 
 function escolherPrimeiroValor(obj, chaves, fallback = null) { for (const k of chaves) if (obj && obj[k] != null) return obj[k]; return fallback; }
 function formatarDataBruta(v) { if (!v) return null; const s = String(v).trim(); if (/^\d{8}$/.test(s)) return s.slice(0,2)+"/"+s.slice(2,4)+"/"+s.slice(4); if (/^\d{4}-\d{2}-\d{2}/.test(s)) { const [a,m,d]=s.split("-"); return d+"/"+m+"/"+a; } return s; }
 function formatarValorMonetario(v) { if (v == null) return null; const n = Number(String(v).replace(",", ".")); return Number.isFinite(n) ? n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : String(v); }
-function preencherBeneficiario(beneficiario) { refs.nome.textContent = formatNomeCompleto(beneficiario && beneficiario.nome); const plano = ((beneficiario && (beneficiario.tipoPlano || beneficiario.tipoPessoa)) || "PF").toString().toUpperCase(); const descricao = plano === "PJ" ? "Pessoa Juridica" : "Pessoa Fisica"; refs.plano.textContent = plano + " - " + descricao; }
+function preencherBeneficiario(beneficiario) { refs.nome.textContent = formatNomeCompleto(beneficiario && (beneficiario.nome_titular || beneficiario.nome)); const plano = ((beneficiario && (beneficiario.tipo_plano || beneficiario.tipoPessoa)) || "PF").toString().toUpperCase(); const descricao = plano === "PJ" ? "Pessoa Juridica" : "Pessoa Fisica"; refs.plano.textContent = plano + " - " + descricao; }
 
 function limparFaturas() { state.faturas = []; state.boletoAtual = { numero: null, url: null }; refs.faturasLista.innerHTML = ""; refs.faturasResumo.textContent = ""; refs.instrucaoFaturas.textContent = ""; resetPDFPreview(); }
 function resetPDFPreview() {
@@ -181,7 +181,8 @@ async function acionarBuscaFaturas() {
   if (!contrato) { showStatus('Informe o numero do contrato para prosseguir.', 'warn'); return; }
   try {
     setLoading(true);
-    const cpfCnpj = state.beneficiario.tipoPessoa === 'PJ' ? digits(state.cnpjInformado || refs.cnpjInput.value) : state.beneficiario.documento;
+    const isPJ = (state.beneficiario?.tipo_plano || state.beneficiario?.tipoPessoa) === 'PJ';
+    const cpfCnpj = isPJ ? digits(state.cnpjInformado || refs.cnpjInput.value) : (state.beneficiario?.cpf_titular || state.beneficiario?.documento);
     const lista = await buscarFaturas(cpfCnpj, contrato);
     state.faturas = lista;
     renderizarFaturas(lista);
@@ -213,7 +214,7 @@ async function handleLookup() {
     preencherBeneficiario(dados);
     limparFaturas();
     setStep('step-servicos');
-    showStatus(`Bem vindo, ${formatNomeCompleto(dados.nome)}.`, 'ok');
+    showStatus(`Bem vindo, ${formatNomeCompleto(dados.nome_titular || dados.nome)}.`, 'ok');
   } catch (error) { showStatus(error.message || 'Nao foi possivel validar o CPF.', 'err'); }
   finally { setLoading(false); }
 }
@@ -223,7 +224,7 @@ function handleServicoSelecionado(servico) {
   if (servico !== 'boletos') { showStatus('Este servico ainda esta em desenvolvimento.', 'warn'); return; }
   const { beneficiario } = state;
   if (!beneficiario) { showStatus('Valide um CPF antes de escolher o servico.', 'warn'); setStep('step-cpf'); return; }
-  if (beneficiario.tipoPessoa === 'PJ') {
+  if ((beneficiario.tipo_plano || beneficiario.tipoPessoa) === 'PJ') {
     state.contratoInformado = null;
     refs.contratoInput.value = '';
     if (refs.cnpjInput) refs.cnpjInput.value = '';
@@ -231,7 +232,7 @@ function handleServicoSelecionado(servico) {
     setStep('step-contrato');
     refs.contratoInput.focus();
   } else {
-    state.contratoInformado = digits(beneficiario.contrato || beneficiario.documento);
+    state.contratoInformado = digits(beneficiario.registro_ans || beneficiario.contrato || beneficiario.cpf_titular || beneficiario.documento);
     acionarBuscaFaturas();
   }
 }
@@ -264,8 +265,8 @@ refs.cpfInput.addEventListener('keyup', (event) => { if (event.key === 'Enter') 
 document.querySelectorAll('[data-servico]').forEach((button) => { button.addEventListener('click', () => handleServicoSelecionado(button.dataset.servico)); });
 refs.btnTrocarCpf.addEventListener('click', resetFlow);
 refs.btnVoltarServicos.addEventListener('click', () => { resetStatus(); setStep('step-servicos'); });
-refs.btnContrato.addEventListener('click', () => { if (state.beneficiario && state.beneficiario.tipoPessoa === 'PJ') { const { cnpj, contrato, ready } = validatePJInputs(); state.cnpjInformado = cnpj; state.contratoInformado = contrato; if (!ready) { showStatus('Informe CNPJ (14 digitos) e contrato.', 'warn'); return; } } else { state.contratoInformado = digits(refs.contratoInput.value); } acionarBuscaFaturas(); });
-refs.contratoInput.addEventListener('keyup', (event) => { if (state.beneficiario && state.beneficiario.tipoPessoa === 'PJ') validatePJInputs(); if (event.key === 'Enter') { if (state.beneficiario && state.beneficiario.tipoPessoa === 'PJ') { const { ready } = validatePJInputs(); if (!ready) { showStatus('Informe CNPJ (14 digitos) e contrato.', 'warn'); return; } } acionarBuscaFaturas(); } });
+refs.btnContrato.addEventListener('click', () => { if (state.beneficiario && (state.beneficiario.tipo_plano || state.beneficiario.tipoPessoa) === 'PJ') { const { cnpj, contrato, ready } = validatePJInputs(); state.cnpjInformado = cnpj; state.contratoInformado = contrato; if (!ready) { showStatus('Informe CNPJ (14 digitos) e contrato.', 'warn'); return; } } else { state.contratoInformado = digits(refs.contratoInput.value); } acionarBuscaFaturas(); });
+refs.contratoInput.addEventListener('keyup', (event) => { if (state.beneficiario && (state.beneficiario.tipo_plano || state.beneficiario.tipoPessoa) === 'PJ') validatePJInputs(); if (event.key === 'Enter') { if (state.beneficiario && (state.beneficiario.tipo_plano || state.beneficiario.tipoPessoa) === 'PJ') { const { ready } = validatePJInputs(); if (!ready) { showStatus('Informe CNPJ (14 digitos) e contrato.', 'warn'); return; } } acionarBuscaFaturas(); } });
 refs.btnVisualizarBoleto.addEventListener('click', visualizarBoleto);
 refs.btnEnviarEmail.addEventListener('click', enviarPorEmail);
 refs.btnEnviarWhatsapp.addEventListener('click', enviarPorWhatsApp);
@@ -274,4 +275,3 @@ refs.modalClose.addEventListener('click', closeModal);
 refs.pdfModal.addEventListener('click', (e) => { if (e.target === refs.pdfModal) closeModal(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && refs.pdfModal.style.display === 'block') closeModal(); });
 refs.btnNovoDocumento.addEventListener('click', resetFlow);
-
