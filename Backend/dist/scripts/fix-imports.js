@@ -1,12 +1,7 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const ts_morph_1 = require("ts-morph");
-const node_path_1 = __importDefault(require("node:path"));
-const project = new ts_morph_1.Project({
-    tsConfigFilePath: node_path_1.default.resolve("tsconfig.json"),
+import { Project } from "ts-morph";
+import path from "node:path";
+const project = new Project({
+    tsConfigFilePath: path.resolve("tsconfig.json"),
 });
 project.addSourceFilesAtPaths(["src/**/*.ts", "src/**/*.tsx"]);
 const isRelative = (s) => s.startsWith("./") || s.startsWith("../");

@@ -1,7 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.isAllowedDocUrl = isAllowedDocUrl;
-function isAllowedDocUrl(raw) {
+export function isAllowedDocUrl(raw) {
     try {
         const u = new URL(raw);
         return (u.protocol === 'https:' &&

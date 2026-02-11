@@ -38,7 +38,10 @@ async function buscarUrlBoleto(numeroFatura: string | number): Promise<string | 
     body: JSON.stringify({ numeroFatura: Number(numeroFatura) }),
   });
 
-  const first = Array.isArray(data?.content) ? data.content[0] : null;\r\n  const url = typeof (first as any)?.url === 'string' ? (first as any).url : undefined;\r\n  return url;
+  const first = Array.isArray(data?.content) ? data.content[0] : null;
+  const url =
+    typeof (first as any)?.url === 'string' ? (first as any).url : undefined;
+  return url;
 }
 
 async function downloadPdfBuffer(url: string) {

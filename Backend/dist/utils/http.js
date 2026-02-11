@@ -1,20 +1,14 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.requireOkJson = requireOkJson;
-exports.requireOkStream = requireOkStream;
-exports.isAllowedDocUrl = isAllowedDocUrl;
-exports.safeFilename = safeFilename;
-const undici_1 = require("undici");
-async function requireOkJson(input, init) {
-    const r = await (0, undici_1.fetch)(input, init);
+import { fetch } from 'undici';
+export async function requireOkJson(input, init) {
+    const r = await fetch(input, init);
     if (!r.ok) {
         const t = await r.text().catch(() => '');
         throw new Error(`${r.status} ${r.statusText} :: ${t}`);
     }
     return r.json();
 }
-async function requireOkStream(input, init) {
-    const r = await (0, undici_1.fetch)(input, init);
+export async function requireOkStream(input, init) {
+    const r = await fetch(input, init);
     if (!r.ok) {
         const t = await r.text().catch(() => '');
         throw new Error(`${r.status} ${r.statusText} :: ${t}`);
@@ -29,7 +23,7 @@ const ALLOWED_DOC_DOMAINS = [
     'localhost',
     '127.0.0.1',
 ];
-function isAllowedDocUrl(url) {
+export function isAllowedDocUrl(url) {
     try {
         const parsed = new URL(url);
         const hostname = parsed.hostname.toLowerCase();
@@ -39,13 +33,11 @@ function isAllowedDocUrl(url) {
         return false;
     }
 }
-function safeFilename(filename) {
+export function safeFilename(filename) {
     if (!filename)
         return 'arquivo';
     return (filename
-        // remove caracteres inválidos no Windows
         .replace(/[<>:"/\\|?*\x00-\x1f]/g, '_')
-        // evita .. ou nomes vazios
         .replace(/\.{2,}/g, '.')
         .replace(/^\.+|\.+$/g, '')
         .trim()

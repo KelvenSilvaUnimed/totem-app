@@ -1,34 +1,47 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.faturasRoute = void 0;
-const token_1 = require("../services/token");
-const strings_1 = require("../utils/strings");
-const http_1 = require("../utils/http");
+import { getToken } from '../services/token.js';
+import { onlyDigits } from '../utils/strings.js';
+import { requireOkJson } from '../utils/http.js';
 const API_FATURAS = 'https://api.unimedpatos.sgusuite.com.br/api/procedure/p_prcssa_dados/0177_busca_dados_fatura_aberto';
-const faturasRoute = async (fastify) => {
+export const faturasRoute = async (fastify) => {
     fastify.post('/api/faturas', async (request, reply) => {
         const started = Date.now();
-        const body = request.body;
-        const { cpfCnpj, contrato } = body ?? {};
+        const { cpfCnpj, contrato } = request.body || {};
         if (!cpfCnpj || !contrato) {
-            return reply.code(400).send({ error: 'cpfCnpj e contrato são obrigatórios' });
+            return reply.code(400).send({
+                error: 'Dados incompletos',
+                message: 'Para buscar faturas, o CPF/CNPJ e o número do contrato são obrigatórios.',
+            });
         }
-        const token = await (0, token_1.getToken)();
-        const payload = {
-            CNPJ: Number((0, strings_1.onlyDigits)(cpfCnpj)),
-            CONTRATO: Number((0, strings_1.onlyDigits)(contrato))
-        };
-        const data = await (0, http_1.requireOkJson)(API_FATURAS, {
-            method: 'POST',
-            headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
-        });
-        const content = Array.isArray(data?.content) ? data.content : [];
-        fastify.log.info(`/api/faturas -> ${content.length} itens [${Date.now() - started}ms]`);
-        return { content };
+        const token = await getToken();
+        const cpfCnpjDigits = onlyDigits(cpfCnpj);
+        const contratoDigits = onlyDigits(contrato);
+        const isPj = cpfCnpjDigits.length > 11;
+        const payload = { cpfCnpj: cpfCnpjDigits, contrato: contratoDigits };
+        try {
+            const data = await requireOkJson(API_FATURAS, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+            });
+            const content = Array.isArray(data?.content) ? data.content : [];
+            fastify.log.info({
+                msg: '/api/faturas',
+                tipo: isPj ? 'PJ' : 'PF',
+                payloadEnviado: payload,
+                itens: content.length,
+                tempo: `${Date.now() - started}ms`,
+            });
+            return { content };
+        }
+        catch (error) {
+            fastify.log.error(error);
+            return reply.code(502).send({
+                error: 'Erro na busca',
+                message: 'Não foi possível buscar as faturas. Verifique se o número do contrato está correto.',
+            });
+        }
     });
 };
-exports.faturasRoute = faturasRoute;

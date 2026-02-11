@@ -1,8 +1,6 @@
 import React from 'react';
-import { Dimensions, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-
-const { width, height } = Dimensions.get('window');
 
 // Cores do tema Unimed
 const colors = {

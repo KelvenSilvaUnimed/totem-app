@@ -16,6 +16,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import type { ScaledSize } from 'react-native';
 
 import {
     buscarBoleto,
@@ -36,8 +37,23 @@ export default function TotemHomeScreen() {
   const [viewport, setViewport] = useState(() =>
     Dimensions.get(Platform.OS === 'web' ? 'window' : 'screen'),
   );
-  const viewportWidth = viewport.width || (Platform.OS === 'web' ? window.innerWidth : 0);
-  const viewportHeight = viewport.height || (Platform.OS === 'web' ? window.innerHeight : 0);
+  const [stableViewport, setStableViewport] = useState(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      return { width: window.innerWidth, height: window.innerHeight, scale: 1, fontScale: 1 };
+    }
+    return Dimensions.get(Platform.OS === 'web' ? 'window' : 'screen');
+  });
+  const stableViewportRef = useRef(stableViewport);
+  const stableWidth =
+    stableViewport.width || (Platform.OS === 'web' && typeof window !== 'undefined' ? window.innerWidth : 0);
+  const stableHeight =
+    stableViewport.height || (Platform.OS === 'web' && typeof window !== 'undefined' ? window.innerHeight : 0);
+  const liveWidth =
+    viewport.width || (Platform.OS === 'web' && typeof window !== 'undefined' ? window.innerWidth : 0);
+  const liveHeight =
+    viewport.height || (Platform.OS === 'web' && typeof window !== 'undefined' ? window.innerHeight : 0);
+  const viewportWidth = Platform.OS === 'web' ? stableWidth : liveWidth;
+  const viewportHeight = Platform.OS === 'web' ? stableHeight : liveHeight;
   // Tablet: mobile com tela grande OU web em viewport de tablet
   const viewportMax = Math.max(viewportWidth, viewportHeight);
   const viewportMin = Math.min(viewportWidth, viewportHeight);
@@ -62,22 +78,78 @@ export default function TotemHomeScreen() {
   const [boletoAtual, setBoletoAtual] = useState<BoletoResult | null>(null);
   const [showCpfInput, setShowCpfInput] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const keyboardHeightRef = useRef(0);
   const [boletoModalUrl, setBoletoModalUrl] = useState<string | null>(null);
   const [isBoletoModalVisible, setIsBoletoModalVisible] = useState(false);
   const [isFormFocused, setIsFormFocused] = useState(false);
+  const isFormFocusedRef = useRef(false);
   const scrollRef = useRef<ScrollView | null>(null);
 
   useEffect(() => {
-    const onChange = ({ window }: { window: { width: number; height: number } }) => {
-      if (window?.width && window?.height) setViewport(window);
+    stableViewportRef.current = stableViewport;
+  }, [stableViewport]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const syncViewport = () => {
+      const next = { width: window.innerWidth, height: window.innerHeight, scale: 1, fontScale: 1 };
+      setViewport(next);
+      if (!isFormFocusedRef.current && keyboardHeightRef.current === 0) {
+        setStableViewport(next);
+      }
+    };
+    const raf = requestAnimationFrame(syncViewport);
+    const timeout = window.setTimeout(syncViewport, 50);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(timeout);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const onResize = () => {
+      const next = { width: window.innerWidth, height: window.innerHeight, scale: 1, fontScale: 1 };
+      setViewport(next);
+      if (!isFormFocusedRef.current && keyboardHeightRef.current === 0) {
+        setStableViewport(next);
+      }
+    };
+    onResize();
+    window.addEventListener('resize', onResize);
+    return () => {
+      window.removeEventListener('resize', onResize);
+    };
+  }, []);
+
+  useEffect(() => {
+    const onChange = ({ window, screen }: { window: ScaledSize; screen: ScaledSize }) => {
+      if (window?.width && window?.height) {
+        setViewport(window);
+        if (Platform.OS === 'web') {
+          const stable = stableViewportRef.current;
+          const widthChanged = Math.abs(window.width - stable.width) > 40;
+          const heightIncreased = window.height > stable.height + 40;
+          const keyboardVisible = isFormFocusedRef.current || keyboardHeightRef.current > 0;
+          if (!keyboardVisible || widthChanged || heightIncreased) {
+            setStableViewport(window);
+          }
+        }
+      }
+      if (Platform.OS !== 'web' && screen?.width && screen?.height) {
+        setStableViewport(screen);
+      }
     };
     const subscription = Dimensions.addEventListener('change', onChange);
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
     const showSub = Keyboard.addListener(showEvent, (event) => {
-      setKeyboardHeight(event.endCoordinates?.height || 0);
+      const height = event.endCoordinates?.height || 0;
+      keyboardHeightRef.current = height;
+      setKeyboardHeight(height);
     });
     const hideSub = Keyboard.addListener(hideEvent, () => {
+      keyboardHeightRef.current = 0;
       setKeyboardHeight(0);
     });
     return () => {
@@ -87,13 +159,33 @@ export default function TotemHomeScreen() {
     };
   }, []);
 
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+
+    const updateKeyboard = () => {
+      const diff = window.innerHeight - viewport.height - viewport.offsetTop;
+      const height = Math.max(0, diff);
+      keyboardHeightRef.current = height;
+      setKeyboardHeight(height);
+    };
+
+    viewport.addEventListener('resize', updateKeyboard);
+    viewport.addEventListener('scroll', updateKeyboard);
+    updateKeyboard();
+
+    return () => {
+      viewport.removeEventListener('resize', updateKeyboard);
+      viewport.removeEventListener('scroll', updateKeyboard);
+    };
+  }, []);
+
 
   const resumoFaturas = useMemo(() => {
     if (!faturas.length) return 'Nenhuma fatura encontrada.';
     return `Encontramos ${faturas.length} fatura${faturas.length > 1 ? 's' : ''} em aberto.`;
   }, [faturas]);
-
-  const isPJ = beneficiario?.tipo_plano === 'PJ';
 
   const setStatusMessage = (type: StatusType, message: string) => setStatus({ type, message });
 
@@ -131,7 +223,7 @@ export default function TotemHomeScreen() {
       const result = await lookupByCpf(digits);
       setBeneficiario(result);
       setStep(result.tipo_plano === 'PJ' ? 'contrato' : 'servicos');
-      setStatusMessage('ok', `Bem-vindo, ${utils.formatNomeCompleto(result.nome_titular)}.`);
+      setStatusMessage('ok', `Bem-vindo!!!!, ${utils.formatNomeCompleto(result.nome_titular || '')}.`);
     } catch (error: any) {
       setStatusMessage('err', error?.message || 'Não foi possível validar o CPF.');
     } finally {
@@ -167,7 +259,7 @@ export default function TotemHomeScreen() {
     }
 
     const contratoNumero = beneficiario.registro_ans || beneficiario.cpf_titular;
-    carregarFaturas(utils.digits(beneficiario.cpf_titular), utils.digits(contratoNumero));
+    carregarFaturas(utils.digits(beneficiario.cpf_titular || ''), utils.digits(contratoNumero || ''));
   };
 
   const handleBuscarFaturasPJ = () => {
@@ -204,24 +296,6 @@ export default function TotemHomeScreen() {
       utils.escolherPrimeiroValor(item as any, ['vencimento', 'vencimentofatura', 'dataVencimento', 'data_vencimento']) ||
         '',
     ) || 'N/D';
-
-  const handleSelecionarFatura = async (item: Fatura, index: number) => {
-    const numero = getNumeroFatura(item, index);
-    setSelectedFatura(numero);
-    setBoletoAtual(null);
-    setStatusMessage('warn', `Carregando boleto da fatura ${numero}...`);
-    setLoading(true);
-    try {
-      const boleto = await buscarBoleto(numero);
-      setBoletoAtual({ ...boleto, numero });
-      setStatusMessage('ok', `Boleto da fatura ${numero} pronto!`);
-    } catch (error: any) {
-      setStatusMessage('err', error?.message || 'Falha ao carregar o boleto.');
-      setSelectedFatura(null);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const carregarEBoleto = async (item: Fatura, index: number) => {
     const numero = getNumeroFatura(item, index);
@@ -291,6 +365,19 @@ export default function TotemHomeScreen() {
     setBoletoModalUrl(null);
   };
 
+  const handleEncerrarAtendimento = () => {
+    handleFecharBoletoModal();
+    resetarFluxo();
+  };
+
+  const handleVoltarParaFaturas = () => {
+    handleFecharBoletoModal();
+    setBoletoAtual(null);
+    setSelectedFatura(null);
+    setStatus(null);
+    setStep('faturas');
+  };
+
   const handleImprimir = async () => {
     if (!boletoAtual || !selectedFatura) {
       Alert.alert('Aviso', 'Nenhum boleto carregado.');
@@ -350,7 +437,7 @@ export default function TotemHomeScreen() {
   const renderCPFStep = () => (
     <View style={styles.welcomeCard}>
       <Text style={styles.welcomeTitle}>TOTEM DE ATENDIMENTO</Text>
-      <Text style={styles.welcomeSubtitle}>Bem-vindo!</Text>
+      <Text style={styles.welcomeSubtitle}>Bem-vindo!!</Text>
       <Text style={styles.welcomeDescription}>Retire aqui a sua 2ª via de boleto:</Text>
       
       {showCpfInput ? (
@@ -399,10 +486,11 @@ export default function TotemHomeScreen() {
           <View style={styles.pjBadge}>
             <Text style={styles.pjBadgeText}>PESSOA JURÍDICA</Text>
           </View>
-          <Text style={styles.pjWelcome}>Bem vindo {utils.formatNomeCompleto(beneficiario?.nome_titular || '')}!</Text>
+          <Text style={styles.pjWelcome}>Bem vindo {utils.formatNomeCompleto(beneficiario?.nome_titular || '')}!!</Text>
           <Text style={styles.pjNextStep}>Próximo passo:</Text>
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'position' : 'padding'}
+            enabled={Platform.OS !== 'web'}
           >
             <View style={styles.buttonRow}>
               <TouchableOpacity 
@@ -431,6 +519,7 @@ export default function TotemHomeScreen() {
         <Text style={styles.pjNextStep}>Próximo passo:</Text>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'position' : 'padding'}
+          enabled={Platform.OS !== 'web'}
         >
           <View style={[styles.formContainer, isTablet && styles.formContainerTablet]}>
             <Text style={styles.formLabel}>Número do contrato</Text>
@@ -442,10 +531,14 @@ export default function TotemHomeScreen() {
               onChangeText={setContratoPF}
               keyboardType="numeric"
               onFocus={() => {
+                isFormFocusedRef.current = true;
                 setIsFormFocused(true);
                 scrollRef.current?.scrollToEnd({ animated: true });
               }}
-              onBlur={() => setIsFormFocused(false)}
+              onBlur={() => {
+                isFormFocusedRef.current = false;
+                setIsFormFocused(false);
+              }}
             />
           </View>
           <View style={styles.buttonRow}>
@@ -482,6 +575,7 @@ export default function TotemHomeScreen() {
       
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'position' : 'padding'}
+        enabled={Platform.OS !== 'web'}
       >
         <View style={[styles.formContainer, isTablet && styles.formContainerTablet]}>
           <Text style={styles.formLabel}>CNPJ</Text>
@@ -494,10 +588,14 @@ export default function TotemHomeScreen() {
           keyboardType="numeric"
           maxLength={18}
           onFocus={() => {
+            isFormFocusedRef.current = true;
             setIsFormFocused(true);
             scrollRef.current?.scrollToEnd({ animated: true });
           }}
-          onBlur={() => setIsFormFocused(false)}
+          onBlur={() => {
+            isFormFocusedRef.current = false;
+            setIsFormFocused(false);
+          }}
         />
           <Text style={styles.formLabel}>Número do contrato</Text>
         <TextInput
@@ -508,10 +606,14 @@ export default function TotemHomeScreen() {
           onChangeText={setcontrato}
           keyboardType="numeric"
           onFocus={() => {
+            isFormFocusedRef.current = true;
             setIsFormFocused(true);
             scrollRef.current?.scrollToEnd({ animated: true });
           }}
-          onBlur={() => setIsFormFocused(false)}
+          onBlur={() => {
+            isFormFocusedRef.current = false;
+            setIsFormFocused(false);
+          }}
         />
         </View>
         
@@ -614,7 +716,11 @@ export default function TotemHomeScreen() {
     <View style={[styles.screenRoot, { width: viewportWidth, height: viewportHeight }]}>
       <View
         pointerEvents="none"
-        style={[styles.backgroundLayer, { width: viewportWidth, height: viewportHeight }]}
+        style={[
+          styles.backgroundLayer,
+          Platform.OS === 'web' && styles.backgroundLayerFixed,
+          { width: viewportWidth, height: viewportHeight },
+        ]}
       >
         <ImageBackground
           source={require('@/assets/images/fundo_.png')}
@@ -685,6 +791,7 @@ export default function TotemHomeScreen() {
         <KeyboardAvoidingView
           style={styles.contentWrapper}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          enabled={Platform.OS !== 'web'}
         >
           <ScrollView
             ref={scrollRef}
@@ -727,16 +834,29 @@ export default function TotemHomeScreen() {
       >
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Boleto</Text>
-              <TouchableOpacity style={styles.modalCloseButton} onPress={handleFecharBoletoModal}>
-                <Text style={styles.modalCloseButtonText}>Fechar</Text>
-              </TouchableOpacity>
-            </View>
+
             <PdfViewer
               source={boletoModalUrl ? { uri: boletoModalUrl } : null}
               style={styles.modalPdf}
             />
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={[styles.modalFooterButton, styles.modalFooterButtonSecondary]}
+                onPress={handleVoltarParaFaturas}
+              >
+                <Text style={[styles.modalFooterButtonText, styles.modalFooterButtonTextLight]}>
+                  Ver outro boleto
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalFooterButton, styles.modalFooterButtonPrimary]}
+                onPress={handleEncerrarAtendimento}
+              >
+                <Text style={[styles.modalFooterButtonText, styles.modalFooterButtonTextPrimary]}>
+                  Encerrar atendimento
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -749,12 +869,6 @@ type ButtonProps = {
   onPress?: () => void;
   disabled?: boolean;
 };
-
-const PrimaryButton = ({ text, onPress, disabled }: ButtonProps) => (
-  <TouchableOpacity style={[styles.primaryButton, disabled && styles.buttonDisabled]} onPress={onPress} disabled={disabled}>
-    <Text style={styles.primaryButtonText}>{text}</Text>
-  </TouchableOpacity>
-);
 
 const SecondaryButton = ({ text, onPress, disabled }: ButtonProps) => (
   <TouchableOpacity
@@ -769,16 +883,6 @@ const SecondaryButton = ({ text, onPress, disabled }: ButtonProps) => (
 const LinkButton = ({ text, onPress }: { text: string; onPress: () => void }) => (
   <TouchableOpacity onPress={onPress}>
     <Text style={styles.linkButtonText}>{text}</Text>
-  </TouchableOpacity>
-);
-
-const ActionButton = ({ text, onPress, disabled }: ButtonProps) => (
-  <TouchableOpacity
-    style={[styles.actionButton, disabled && styles.actionButtonDisabled]}
-    onPress={onPress}
-    disabled={disabled}
-  >
-    <Text style={styles.actionButtonText}>{text}</Text>
   </TouchableOpacity>
 );
 
