@@ -1,4 +1,4 @@
-﻿import { Image } from 'expo-image';
+import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -126,7 +126,7 @@ export default function FaturasScreen() {
         'Sucesso',
         `Enviado para a impressora${result.printer ? ` (${result.printer})` : ''}.`
       );
-    } catch (err: any) {
+    } catch {
       // Fallback: tentar abrir para impressao manual
       Alert.alert(
         'Atencao',

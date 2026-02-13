@@ -1,12 +1,9 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.validarNomeBenef = validarNomeBenef;
-const undici_1 = require("undici");
-const token_js_1 = require("./token.js");
+import { fetch } from 'undici';
+import { getToken } from './token.js';
 const API_VALIDACAO = 'https://api.unimedpatos.sgusuite.com.br/api/procedure/p_prcssa_dados/0177-valida-nome-benef';
-async function validarNomeBenef(payload) {
-    const token = await (0, token_js_1.getToken)();
-    const r = await (0, undici_1.fetch)(API_VALIDACAO, {
+export async function validarNomeBenef(payload) {
+    const token = await getToken();
+    const r = await fetch(API_VALIDACAO, {
         method: 'POST',
         headers: {
             Authorization: `Bearer ${token}`,

@@ -1,22 +1,19 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.getToken = getToken;
-const undici_1 = require("undici");
-const env_1 = require("../config/env");
+import { fetch } from 'undici';
+import { CONFIG } from '../config/env.js';
 const OAUTH_URL = 'https://api.unimedpatos.sgusuite.com.br/oauth2/token';
 let cachedToken = null;
 let expiresAt = 0;
-async function getToken() {
+export async function getToken() {
     const now = Date.now();
     if (cachedToken && now < expiresAt)
         return cachedToken;
     const params = new URLSearchParams({
-        client_id: env_1.CONFIG.CLIENT_ID,
-        client_secret: env_1.CONFIG.CLIENT_SECRET,
+        client_id: CONFIG.CLIENT_ID,
+        client_secret: CONFIG.CLIENT_SECRET,
         grant_type: 'client_credentials',
         scope: 'read'
     });
-    const r = await (0, undici_1.fetch)(OAUTH_URL, {
+    const r = await fetch(OAUTH_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: params

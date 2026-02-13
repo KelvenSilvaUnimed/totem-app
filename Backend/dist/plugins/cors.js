@@ -1,23 +1,35 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.corsPlugin = void 0;
-const cors_1 = __importDefault(require("@fastify/cors"));
-const corsPlugin = async (fastify) => {
-    await fastify.register(cors_1.default, {
-        origin: true,
+import cors from '@fastify/cors';
+import { CONFIG } from '../config/env.js';
+function isOriginAllowed(origin) {
+    if (!origin)
+        return true;
+    if (CONFIG.RAW_CORS_ORIGINS.includes('*'))
+        return true;
+    return CONFIG.RAW_CORS_ORIGINS.includes(origin);
+}
+export const corsPlugin = async (fastify) => {
+    await fastify.register(cors, {
+        origin: (origin, cb) => {
+            if (isOriginAllowed(origin)) {
+                return cb(null, origin || '*');
+            }
+            return cb(new Error('Origin not allowed'), false);
+        },
         credentials: false,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
         exposedHeaders: ['Content-Type', 'Content-Disposition'],
+        optionsSuccessStatus: 204,
     });
+    // Garante envio do header CORS mesmo quando o plugin não injeta (ex.: health)
     fastify.addHook('onSend', async (request, reply, payload) => {
-        reply.header('Access-Control-Allow-Origin', '*');
-        reply.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-        reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
+        const origin = request.headers.origin;
+        if (isOriginAllowed(origin)) {
+            reply.header('Access-Control-Allow-Origin', origin || '*');
+            reply.header('Vary', 'Origin');
+            reply.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+            reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
+        }
         return payload;
     });
 };
-exports.corsPlugin = corsPlugin;

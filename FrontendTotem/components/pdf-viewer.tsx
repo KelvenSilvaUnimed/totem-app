@@ -1,12 +1,7 @@
 import { Platform } from 'react-native';
+import PdfViewerNative from './pdf-viewer.native';
+import PdfViewerWeb from './pdf-viewer.web';
 
-let Impl: any;
-if (Platform.OS === 'web') {
-	// eslint-disable-next-line @typescript-eslint/no-var-requires
-	Impl = require('./pdf-viewer.web').default;
-} else {
-	// eslint-disable-next-line @typescript-eslint/no-var-requires
-	Impl = require('./pdf-viewer.native').default;
-}
+const Impl = Platform.OS === 'web' ? PdfViewerWeb : PdfViewerNative;
 
 export default Impl;

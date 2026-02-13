@@ -30,6 +30,9 @@ const styles = StyleSheet.create({
     left: 0,
     zIndex: 0,
   },
+  backgroundLayerFixed: {
+    position: 'fixed',
+  },
   safeArea: {
     flex: 1,
     backgroundColor: 'transparent',
@@ -196,7 +199,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: 14,
     paddingHorizontal: 16,
-    marginTop: '0%',
+    marginTop: 5,
     alignSelf: 'center',
   },
   faturaRowSelected: {
@@ -256,7 +259,7 @@ const styles = StyleSheet.create({
   modalHeader: {
     backgroundColor: '#0b5967',
     paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingVertical: 3,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -264,7 +267,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     color: '#D6DAC0',
     fontWeight: '700',
-    fontSize: 22,
+    fontSize: 18,
   },
   modalCloseButton: {
     backgroundColor: '#d3d94a',
@@ -280,6 +283,37 @@ const styles = StyleSheet.create({
   modalPdf: {
     flex: 1,
     width: '100%',
+  },
+  modalFooter: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#f3f4f6',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  modalFooterButton: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  modalFooterButtonPrimary: {
+    backgroundColor: '#B1CD51',
+  },
+  modalFooterButtonSecondary: {
+    backgroundColor: '#008C50',
+  },
+  modalFooterButtonText: {
+    fontWeight: '700',
+    fontSize: 16,
+    color: '#0b4a56',
+  },
+  modalFooterButtonTextPrimary: {
+    color: '#0b4a56',
+  },
+  modalFooterButtonTextLight: {
+    color: '#ffffff',
   },
   actionsContainer: {},
   actionsTitle: {},
