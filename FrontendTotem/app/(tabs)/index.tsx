@@ -437,7 +437,7 @@ export default function TotemHomeScreen() {
   const renderCPFStep = () => (
     <View style={styles.welcomeCard}>
       <Text style={styles.welcomeTitle}>TOTEM DE ATENDIMENTO</Text>
-      <Text style={styles.welcomeSubtitle}>Bem-vindo!!</Text>
+      <Text style={styles.welcomeSubtitle}>Bem-vindo!</Text>
       <Text style={styles.welcomeDescription}>Retire aqui a sua 2ª via de boleto:</Text>
       
       {showCpfInput ? (
