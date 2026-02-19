@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "FrontendTotem",
-    "slug": "FrontendTotem",
+    "slug": "totem-unimed",
     "version": "1.0.0",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
@@ -38,7 +38,8 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -47,8 +48,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "6d62ca84-0423-44f1-9f3a-1d7188e1805e"
+        "projectId": "ce240ab1-c816-43c7-835c-8e55155e508c"
       }
-    }
+    },
+    "owner": "kelvensilvas-organization"
   }
 }

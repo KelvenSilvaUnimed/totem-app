@@ -6,7 +6,8 @@
       }
     },
     "android": {
-      "package": "com.totemboletos"
+      "package": "com.totemboletos",
+      "softwareKeyboardLayoutMode": "resize"
     }
   }
 }
