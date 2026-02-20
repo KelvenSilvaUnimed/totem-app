@@ -8,18 +8,32 @@ services:
     env_file:
       - ./Backend/.env
     ports:
-      - "3000:3000"
+      - "${BACKEND_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
     restart: unless-stopped
+    networks:
+      - totem-net
 
   frontend:
     build:
       context: ./FrontendTotem
       dockerfile: Dockerfile
       args:
-        EXPO_PUBLIC_API_BASE_URL: "http://192.168.178.72:3000"
-        EXPO_PUBLIC_API_PREFIX: ""
+        EXPO_PUBLIC_API_BASE_URL: "${EXPO_PUBLIC_API_BASE_URL:-http://localhost:3000}"
+        EXPO_PUBLIC_API_PREFIX: "${EXPO_PUBLIC_API_PREFIX:-}"
     ports:
-      - "8081:80"
+      - "${FRONTEND_PORT:-8081}:80"
     depends_on:
       - backend
     restart: unless-stopped
+    networks:
+      - totem-net
+
+networks:
+  totem-net:
+    driver: bridge

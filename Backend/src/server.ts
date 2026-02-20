@@ -82,6 +82,20 @@ async function start() {
     app.log.info(`Servidor rodando em ${server}`);
     app.log.info(`CORS: ${CONFIG.RAW_CORS_ORIGINS.join(', ')}`);
     app.log.info(`frame-ancestors: 'self' ${CONFIG.FRAME_ANCESTORS_LIST.join(' ')}`);
+
+    const shutdown = async (signal: string) => {
+      app.log.info(`Recebido ${signal}, encerrando servidor...`);
+      try {
+        await app.close();
+        process.exit(0);
+      } catch (err) {
+        app.log.error(err);
+        process.exit(1);
+      }
+    };
+
+    process.on('SIGINT', () => shutdown('SIGINT'));
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
   } catch (err) {
     console.error(err);
     process.exit(1);

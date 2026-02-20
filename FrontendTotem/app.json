@@ -4,10 +4,9 @@
     "slug": "totem-unimed",
     "version": "1.0.0",
     "orientation": "default",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/icon-1024.png",
     "scheme": "frontendtotem",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
     },
@@ -16,9 +15,7 @@
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/favicon.png"
       },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
-      "softwareKeyboardLayoutMode": "nothing",
+      "softwareKeyboardLayoutMode": "resize",
       "package": "com.anonymous.FrontendTotem"
     },
     "web": {
@@ -38,8 +35,7 @@
             "backgroundColor": "#000000"
           }
         }
-      ],
-      "expo-web-browser"
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
