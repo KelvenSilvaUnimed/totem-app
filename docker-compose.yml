@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   backend:
     build:
@@ -24,7 +22,7 @@ services:
       context: ./FrontendTotem
       dockerfile: Dockerfile
       args:
-        EXPO_PUBLIC_API_BASE_URL: "${EXPO_PUBLIC_API_BASE_URL:-http://localhost:3000}"
+        EXPO_PUBLIC_API_BASE_URL: "${EXPO_PUBLIC_API_BASE_URL:-}"
         EXPO_PUBLIC_API_PREFIX: "${EXPO_PUBLIC_API_PREFIX:-}"
     ports:
       - "${FRONTEND_PORT:-8081}:80"

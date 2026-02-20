@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 
 export const palette = {
   background: '#0f172a',
@@ -16,6 +16,27 @@ export const palette = {
   grayText: '#4a4a4a',
   orange: '#e8883a',
 };
+
+const shadow = (
+  webShadow: string,
+  native: {
+    color: string;
+    offset: { width: number; height: number };
+    opacity: number;
+    radius: number;
+    elevation?: number;
+  }
+) =>
+  Platform.select({
+    web: { boxShadow: webShadow },
+    default: {
+      shadowColor: native.color,
+      shadowOffset: native.offset,
+      shadowOpacity: native.opacity,
+      shadowRadius: native.radius,
+      ...(native.elevation ? { elevation: native.elevation } : {}),
+    },
+  });
 
 // Estilos otimizados para TABLET
 const styles = StyleSheet.create({
@@ -395,11 +416,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 64,
     minWidth: 380,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 8,
+    ...shadow('0 6px 12px rgba(0,0,0,0.25)', {
+      color: '#000',
+      offset: { width: 0, height: 6 },
+      opacity: 0.25,
+      radius: 12,
+      elevation: 8,
+    }),
   },
   orangeButtonText: {
     color: palette.white,
@@ -424,11 +447,13 @@ const styles = StyleSheet.create({
     color: palette.grayText,
     textAlign: 'center',
     minWidth: 400,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
+    ...shadow('0 4px 8px rgba(0,0,0,0.15)', {
+      color: '#000',
+      offset: { width: 0, height: 4 },
+      opacity: 0.15,
+      radius: 8,
+      elevation: 5,
+    }),
   },
   cpfButtonRow: {
     flexDirection: 'row',
@@ -515,11 +540,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 48,
     minWidth: 400,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 8,
+    ...shadow('0 6px 12px rgba(0,0,0,0.25)', {
+      color: '#000',
+      offset: { width: 0, height: 6 },
+      opacity: 0.25,
+      radius: 12,
+      elevation: 8,
+    }),
   },
   greenButtonText: {
     color: palette.white,
@@ -533,8 +560,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
     paddingVertical: 0,
     marginTop: 12,
-    shadowColor: 'transparent',
     alignItems: 'center',
+    ...shadow('none', {
+      color: 'transparent',
+      offset: { width: 0, height: 0 },
+      opacity: 0,
+      radius: 0,
+    }),
   },
   semFaturaContainer: {
     marginTop: 20,
@@ -578,11 +610,13 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: '500',
     color: palette.grayText,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
+    ...shadow('0 4px 8px rgba(0,0,0,0.15)', {
+      color: '#000',
+      offset: { width: 0, height: 4 },
+      opacity: 0.15,
+      radius: 8,
+      elevation: 5,
+    }),
   },
   // Estilos de layout/imagens
   backgroundImage: {

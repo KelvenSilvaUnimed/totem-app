@@ -17,6 +17,7 @@ import {
     View,
 } from 'react-native';
 import type { ScaledSize } from 'react-native';
+import { useFullscreen, useIdle } from 'react-use';
 
 import {
     buscarBoleto,
@@ -34,6 +35,24 @@ type Step = 'cpf' | 'servicos' | 'contrato' | 'faturas';
 type StatusType = 'ok' | 'warn' | 'err';
 
 export default function TotemHomeScreen() {
+  const rootRef = useRef<View | null>(null);
+  const [shouldFullscreen, setShouldFullscreen] = useState(false);
+  const isIdle = useIdle(60000);
+  useFullscreen(rootRef, shouldFullscreen, {
+    onClose: () => setShouldFullscreen(false),
+  });
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible' && !shouldFullscreen) {
+        setShouldFullscreen(true);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, [shouldFullscreen]);
+
   const [viewport, setViewport] = useState(() =>
     Dimensions.get(Platform.OS === 'web' ? 'window' : 'screen'),
   );
@@ -466,7 +485,10 @@ export default function TotemHomeScreen() {
         <View style={styles.buttonRow}>
           <TouchableOpacity 
             style={[styles.orangeButton, loading && styles.buttonDisabled]} 
-            onPress={() => setShowCpfInput(true)} 
+            onPress={() => {
+              handleWake();
+              setShowCpfInput(true);
+            }} 
             disabled={loading}
           >
             <Text style={styles.orangeButtonText}>DIGITE O CPF</Text>
@@ -712,13 +734,41 @@ export default function TotemHomeScreen() {
     </View>
   );
 
+  const handleWake = () => {
+    if (Platform.OS === 'web') {
+      setShouldFullscreen(true);
+      if (typeof window !== 'undefined') {
+        window.setTimeout(() => window.scrollTo(0, 1), 50);
+      }
+    }
+  };
+
   return (
-    <View style={[styles.screenRoot, { width: viewportWidth, height: viewportHeight }]}>
+    <View
+      ref={rootRef}
+      style={[styles.screenRoot, { width: viewportWidth, height: viewportHeight }]}
+      onTouchStart={handleWake}
+      onMouseDown={handleWake}
+    >
+      {isIdle && Platform.OS === 'web' && (
+        <View
+          style={{
+            position: 'absolute',
+            zIndex: 999,
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.2)',
+          }}
+          pointerEvents="none"
+        />
+      )}
       <View
-        pointerEvents="none"
         style={[
           styles.backgroundLayer,
           Platform.OS === 'web' && styles.backgroundLayerFixed,
+          { pointerEvents: 'none' },
           { width: viewportWidth, height: viewportHeight },
         ]}
       >
