@@ -1,4 +1,4 @@
-﻿// Tipos e interfaces para a API do Totem
+// Tipos e interfaces para a API do Totem
 
 // Resposta do endpoint de lookup (identificacao do beneficiario)
 export interface Beneficiario {
@@ -36,6 +36,13 @@ export interface Fatura {
 // Resposta da busca de faturas
 export interface FaturasResponse {
   content: Fatura[];
+  /** Nome da empresa (ex.: fluxo PJ / CNPJ + contrato) */
+  nome_empresa?: string;
+}
+
+export interface BuscarFaturasResult {
+  faturas: Fatura[];
+  nomeEmpresa?: string;
 }
 
 // Boleto

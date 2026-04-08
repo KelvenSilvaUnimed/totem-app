@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -16,8 +16,8 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import type { ScaledSize } from 'react-native';
-import { useFullscreen, useIdle } from 'react-use';
+import type { ImageStyle, ScaledSize } from 'react-native';
+import { useFullscreen } from 'react-use';
 
 import {
     buscarBoleto,
@@ -28,30 +28,33 @@ import {
     utils,
 } from '@/services/api.service';
 import type { Beneficiario, BoletoResult, Fatura } from '@/services/api.types';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import PdfViewer from '@/components/pdf-viewer';
 import styles, { palette } from '@/styles/totem.styles';
 
-type Step = 'cpf' | 'servicos' | 'contrato' | 'faturas';
+type Step = 'cpf' | 'servicos' | 'contrato' | 'resp_financeiro' | 'faturas';
+
+type PendingFaturasRequest = {
+  cpfCnpj: string;
+  segundoParam: string;
+  opts?: { segundoCampo: 'contrato' | 'data_nascimento_titular' };
+  /** Tela anterior ao confirmar o responsável financeiro. */
+  voltarPara: 'servicos' | 'contrato';
+};
 type StatusType = 'ok' | 'warn' | 'err';
+
+/** Sem interação por este tempo → volta à tela inicial (CPF). */
+const IDLE_TIMEOUT_MS = 35_000;
 
 export default function TotemHomeScreen() {
   const rootRef = useRef<View | null>(null);
   const [shouldFullscreen, setShouldFullscreen] = useState(false);
-  const isIdle = useIdle(60000);
-  useFullscreen(rootRef, shouldFullscreen, {
+  const lastActivityRef = useRef(Date.now());
+  const loadingRef = useRef(false);
+  const resetarFluxoRef = useRef<() => void>(() => {});
+  useFullscreen(rootRef as RefObject<Element>, shouldFullscreen, {
     onClose: () => setShouldFullscreen(false),
   });
-
-  useEffect(() => {
-    if (Platform.OS !== 'web') return;
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible' && !shouldFullscreen) {
-        setShouldFullscreen(true);
-      }
-    };
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => document.removeEventListener('visibilitychange', onVisibility);
-  }, [shouldFullscreen]);
 
   const [viewport, setViewport] = useState(() =>
     Dimensions.get(Platform.OS === 'web' ? 'window' : 'screen'),
@@ -86,16 +89,15 @@ export default function TotemHomeScreen() {
   const atendenteHeight = viewportHeight * (isTablet ? 0.67 : 0.55);
   const [step, setStep] = useState<Step>('cpf');
   const [cpf, setCpf] = useState('');
-  const [cnpj, setCnpj] = useState('');
-  const [contrato, setcontrato] = useState('');
   const [contratoPF, setContratoPF] = useState('');
+  /** Data de nascimento (fluxo PJ — confere com `data_nascimento_titular` do lookup). */
+  const [dataNascimentoPJ, setDataNascimentoPJ] = useState('');
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<{ type: StatusType; message: string } | null>(null);
   const [beneficiario, setBeneficiario] = useState<Beneficiario | null>(null);
   const [faturas, setFaturas] = useState<Fatura[]>([]);
   const [selectedFatura, setSelectedFatura] = useState<string | null>(null);
   const [boletoAtual, setBoletoAtual] = useState<BoletoResult | null>(null);
-  const [showCpfInput, setShowCpfInput] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const keyboardHeightRef = useRef(0);
   const [boletoModalUrl, setBoletoModalUrl] = useState<string | null>(null);
@@ -103,6 +105,57 @@ export default function TotemHomeScreen() {
   const [isFormFocused, setIsFormFocused] = useState(false);
   const isFormFocusedRef = useRef(false);
   const scrollRef = useRef<ScrollView | null>(null);
+  const [pendingFaturasRequest, setPendingFaturasRequest] = useState<PendingFaturasRequest | null>(null);
+
+  const markUserActive = useCallback(() => {
+    lastActivityRef.current = Date.now();
+  }, []);
+
+  useEffect(() => {
+    loadingRef.current = loading;
+  }, [loading]);
+
+  /** Web: qualquer clique/tecla/scroll reinicia o tempo de inatividade. */
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const mark = () => {
+      lastActivityRef.current = Date.now();
+    };
+    window.addEventListener('pointerdown', mark, true);
+    window.addEventListener('keydown', mark, true);
+    window.addEventListener('scroll', mark, true);
+    return () => {
+      window.removeEventListener('pointerdown', mark, true);
+      window.removeEventListener('keydown', mark, true);
+      window.removeEventListener('scroll', mark, true);
+    };
+  }, []);
+
+  /** Nova etapa ou modal: considera contexto novo para o temporizador. */
+  useEffect(() => {
+    markUserActive();
+  }, [step, isBoletoModalVisible, markUserActive]);
+
+  /** Verifica inatividade a cada 500 ms (não dispara durante carregamento). */
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (loadingRef.current) return;
+      if (Date.now() - lastActivityRef.current < IDLE_TIMEOUT_MS) return;
+      resetarFluxoRef.current();
+    }, 500);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible' && !shouldFullscreen) {
+        setShouldFullscreen(true);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, [shouldFullscreen]);
 
   useEffect(() => {
     stableViewportRef.current = stableViewport;
@@ -202,7 +255,7 @@ export default function TotemHomeScreen() {
 
 
   const resumoFaturas = useMemo(() => {
-    if (!faturas.length) return 'Nenhuma fatura encontrada.';
+    if (!faturas.length) return '';
     return `Encontramos ${faturas.length} fatura${faturas.length > 1 ? 's' : ''} em aberto.`;
   }, [faturas]);
 
@@ -214,19 +267,6 @@ export default function TotemHomeScreen() {
     if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
     if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
     return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9, 11)}`;
-  };
-
-  const formatCnpjInput = (value: string) => {
-    const digits = utils.digits(value);
-    if (digits.length <= 2) return digits;
-    if (digits.length <= 5) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
-    if (digits.length <= 8) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`;
-    if (digits.length <= 12)
-      return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`;
-    return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(
-      8,
-      12,
-    )}-${digits.slice(12, 14)}`;
   };
 
   const handleLookup = async () => {
@@ -250,11 +290,15 @@ export default function TotemHomeScreen() {
     }
   };
 
-  const carregarFaturas = async (cpfCnpj: string, contratoNumero: string) => {
+  const carregarFaturas = async (
+    cpfCnpj: string,
+    segundoParam: string,
+    opts?: { segundoCampo: 'contrato' | 'data_nascimento_titular' },
+  ) => {
     setLoading(true);
     setStatus(null);
     try {
-      const lista = await buscarFaturas(cpfCnpj, contratoNumero);
+      const { faturas: lista } = await buscarFaturas(cpfCnpj, segundoParam, opts);
       setFaturas(lista);
       setStep('faturas');
       setStatusMessage('ok', `Encontramos ${lista.length} fatura${lista.length === 1 ? '' : 's'} em aberto.`);
@@ -263,6 +307,40 @@ export default function TotemHomeScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const possuiRespFinanceiroAtivo = (b: Beneficiario | null) => {
+    const flag = String(b?.possui_resp_financeiro ?? '').trim().toUpperCase();
+    return flag === 'S' && Boolean(b?.nome_resp_financeiro?.trim());
+  };
+
+  /** Após validar contrato (PF) ou data de nascimento (PJ): exibe responsável financeiro ou já busca faturas. */
+  const solicitarFaturasComEtapaRespFinanceiro = (
+    cpfCnpj: string,
+    segundoParam: string,
+    opts: { segundoCampo: 'contrato' | 'data_nascimento_titular' } | undefined,
+    voltarPara: 'servicos' | 'contrato',
+  ) => {
+    if (possuiRespFinanceiroAtivo(beneficiario)) {
+      setPendingFaturasRequest({ cpfCnpj, segundoParam, opts, voltarPara });
+      setStep('resp_financeiro');
+      return;
+    }
+    void carregarFaturas(cpfCnpj, segundoParam, opts);
+  };
+
+  const handleContinuarRespFinanceiro = () => {
+    if (!pendingFaturasRequest) return;
+    const p = pendingFaturasRequest;
+    setPendingFaturasRequest(null);
+    void carregarFaturas(p.cpfCnpj, p.segundoParam, p.opts);
+  };
+
+  const handleVoltarRespFinanceiro = () => {
+    if (!pendingFaturasRequest) return;
+    const { voltarPara } = pendingFaturasRequest;
+    setPendingFaturasRequest(null);
+    setStep(voltarPara);
   };
 
   const handleServicoSelecionado = () => {
@@ -278,24 +356,51 @@ export default function TotemHomeScreen() {
     }
 
     const contratoNumero = beneficiario.registro_ans || beneficiario.cpf_titular;
-    carregarFaturas(utils.digits(beneficiario.cpf_titular || ''), utils.digits(contratoNumero || ''));
+    solicitarFaturasComEtapaRespFinanceiro(
+      utils.digits(beneficiario.cpf_titular || ''),
+      utils.digits(contratoNumero || ''),
+      undefined,
+      'servicos',
+    );
   };
 
   const handleBuscarFaturasPJ = () => {
-    const cnpjDigits = utils.digits(cnpj);
-    const contratoDigits = utils.digits(contrato);
-
-    if (cnpjDigits.length !== 14) {
-      setStatusMessage('warn', 'Informe um CNPJ válido com 14 dígitos.');
+    if (!beneficiario) {
+      setStatusMessage('warn', 'Valide o CPF antes de continuar.');
       return;
     }
 
-    if (!contratoDigits) {
-      setStatusMessage('warn', 'Informe o número do contrato.');
+    const digitosInformados = utils.digits(dataNascimentoPJ);
+    if (digitosInformados.length !== 8) {
+      setStatusMessage('warn', 'Informe a data de nascimento completa (DD/MM/AAAA).');
       return;
     }
 
-    carregarFaturas(cnpjDigits, contratoDigits);
+    const esperado = utils.normalizeDataTitularToDdmmYyyyDigits(beneficiario.data_nascimento_titular);
+    if (!esperado) {
+      setStatusMessage(
+        'err',
+        'Não foi possível validar a data de nascimento no cadastro. Procure o atendimento.',
+      );
+      return;
+    }
+    if (digitosInformados !== esperado) {
+      setStatusMessage('warn', 'A data de nascimento não confere com o cadastro.');
+      return;
+    }
+
+    const cpfTitular = utils.digits(beneficiario.cpf_titular || '');
+    if (cpfTitular.length !== 11) {
+      setStatusMessage('err', 'CPF do titular inválido no cadastro.');
+      return;
+    }
+
+    solicitarFaturasComEtapaRespFinanceiro(
+      cpfTitular,
+      digitosInformados,
+      { segundoCampo: 'data_nascimento_titular' },
+      'contrato',
+    );
   };
 
   const getNumeroFatura = (item: Fatura, index: number) =>
@@ -427,18 +532,21 @@ export default function TotemHomeScreen() {
   };
 
   const resetarFluxo = () => {
+    setIsBoletoModalVisible(false);
+    setBoletoModalUrl(null);
     setCpf('');
-    setCnpj('');
-    setcontrato('');
     setContratoPF('');
+    setDataNascimentoPJ('');
+    setPendingFaturasRequest(null);
     setBeneficiario(null);
     setFaturas([]);
     setSelectedFatura(null);
     setBoletoAtual(null);
     setStep('cpf');
     setStatus(null);
-    setShowCpfInput(false);
   };
+
+  resetarFluxoRef.current = resetarFluxo;
 
   const renderStatus = () => {
     // Exibe somente mensagens de alerta/erro para não mostrar barra "Bem-vindo"
@@ -454,49 +562,47 @@ export default function TotemHomeScreen() {
   };
 
   const renderCPFStep = () => (
-    <View style={styles.welcomeCard}>
-      <Text style={styles.welcomeTitle}>TOTEM DE ATENDIMENTO</Text>
-      <Text style={styles.welcomeSubtitle}>Bem-vindo!</Text>
-      <Text style={styles.welcomeDescription}>Retire aqui a sua 2ª via de boleto:</Text>
-      
-      {showCpfInput ? (
-        <View style={styles.cpfInputContainer}>
-      <TextInput
-            style={styles.cpfInput}
+    <View style={[styles.welcomeCard, styles.homeScreenRoot]}>
+      <View style={styles.homeReceiptIconWrap}>
+        <Ionicons name="receipt-outline" size={100} color={palette.orange} />
+      </View>
+      <Text style={styles.homeEmissaoTitle}>EMISSÃO DE 2ª VIA DE BOLETO</Text>
+      <Text style={styles.homeBemVindo}>Bem-vindo!</Text>
+      <Text style={styles.homeInstrucaoCpf}>Informe o CPF do titular</Text>
+
+      <View style={styles.homeCpfFieldOuter}>
+        <Text style={styles.homeCpfFloatingLabel}>CPF do titular</Text>
+        <View style={styles.homeCpfFieldBorder}>
+          <Ionicons name="document-text-outline" size={36} color={palette.greenDark} />
+          <TextInput
+            style={styles.homeCpfTextInput}
             placeholder="000.000.000-00"
-            placeholderTextColor="#999"
-        value={cpf}
-        onChangeText={(value) => setCpf(formatCpfInput(value))}
-        keyboardType="numeric"
-        maxLength={14}
+            placeholderTextColor="#9ca3af"
+            value={cpf}
+            onChangeText={(value) => setCpf(formatCpfInput(value))}
+            keyboardType="numeric"
+            maxLength={14}
             autoFocus
-      />
-          <View style={styles.cpfButtonRow}>
-            <TouchableOpacity 
-              style={[styles.orangeButton, loading && styles.buttonDisabled]} 
-              onPress={handleLookup} 
-              disabled={loading}
-            >
-              <Text style={styles.orangeButtonText}>CONFIRMAR</Text>
-            </TouchableOpacity>
-          </View>
+            underlineColorAndroid="transparent"
+          />
         </View>
-      ) : (
-        <View style={styles.buttonRow}>
-          <TouchableOpacity 
-            style={[styles.orangeButton, loading && styles.buttonDisabled]} 
-            onPress={() => {
-              handleWake();
-              setShowCpfInput(true);
-            }} 
-            disabled={loading}
-          >
-            <Text style={styles.orangeButtonText}>DIGITE O CPF</Text>
-          </TouchableOpacity>
+      </View>
+
+      <TouchableOpacity
+        style={[styles.homeConfirmButton, loading && styles.buttonDisabled]}
+        onPress={handleLookup}
+        disabled={loading}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.homeConfirmButtonText}>CONFIRMAR</Text>
+        <View style={styles.homeConfirmCheckCircle}>
+          <Ionicons name="checkmark" size={26} color="#ffffff" />
         </View>
-      )}
+      </TouchableOpacity>
     </View>
   );
+
+  const nomeEmpresaDoLookup = beneficiario?.nome_empresa?.trim() || '';
 
   const renderServicosStep = () => {
     const isPessoaJuridica = beneficiario?.tipo_plano === 'PJ';
@@ -509,6 +615,11 @@ export default function TotemHomeScreen() {
             <Text style={styles.pjBadgeText}>PESSOA JURÍDICA</Text>
           </View>
           <Text style={styles.pjWelcome}>Bem vindo {utils.formatNomeCompleto(beneficiario?.nome_titular || '')}!!</Text>
+          {nomeEmpresaDoLookup ? (
+            <Text style={[styles.pjNextStep, { fontStyle: 'normal', fontWeight: '600', color: palette.greenDark }]}>
+              Encontramos o seu vínculo com a empresa {nomeEmpresaDoLookup}.
+            </Text>
+          ) : null}
           <Text style={styles.pjNextStep}>Próximo passo:</Text>
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'position' : 'padding'}
@@ -520,7 +631,7 @@ export default function TotemHomeScreen() {
                 onPress={handleServicoSelecionado} 
                 disabled={loading}
               >
-                <Text style={styles.greenButtonText}>DIGITE O NÚMERO DO contrato</Text>
+                <Text style={styles.greenButtonText}>INFORMAR DATA DE NASCIMENTO</Text>
               </TouchableOpacity>
             </View>
             <View style={[styles.buttonRow, { marginTop: 24 }]}>
@@ -572,7 +683,12 @@ export default function TotemHomeScreen() {
                   setStatusMessage('warn', 'Informe o número do contrato.');
                   return;
                 }
-                carregarFaturas(utils.digits(beneficiario?.cpf_titular || ''), contratoNumero);
+                solicitarFaturasComEtapaRespFinanceiro(
+                  utils.digits(beneficiario?.cpf_titular || ''),
+                  contratoNumero,
+                  undefined,
+                  'servicos',
+                );
               }} 
               disabled={loading}
             >
@@ -594,49 +710,36 @@ export default function TotemHomeScreen() {
         <Text style={styles.pjBadgeText}>PESSOA JURÍDICA</Text>
       </View>
       <Text style={styles.pjWelcome}>Bem vindo {utils.formatNomeCompleto(beneficiario?.nome_titular || '')}!</Text>
+      {nomeEmpresaDoLookup ? (
+        <Text style={[styles.pjNextStep, { fontStyle: 'normal', fontWeight: '600', color: palette.greenDark }]}>
+          Encontramos o seu vínculo com a empresa {nomeEmpresaDoLookup}.
+        </Text>
+      ) : null}
       
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'position' : 'padding'}
         enabled={Platform.OS !== 'web'}
       >
         <View style={[styles.formContainer, isTablet && styles.formContainerTablet]}>
-          <Text style={styles.formLabel}>CNPJ</Text>
-        <TextInput
+          <Text style={styles.formLabel}>Data de nascimento</Text>
+          <TextInput
             style={styles.formInput}
-            placeholder="00.000.000/0000-00"
+            placeholder="DD/MM/AAAA"
             placeholderTextColor="#999"
-          value={cnpj}
-          onChangeText={(value) => setCnpj(formatCnpjInput(value))}
-          keyboardType="numeric"
-          maxLength={18}
-          onFocus={() => {
-            isFormFocusedRef.current = true;
-            setIsFormFocused(true);
-            scrollRef.current?.scrollToEnd({ animated: true });
-          }}
-          onBlur={() => {
-            isFormFocusedRef.current = false;
-            setIsFormFocused(false);
-          }}
-        />
-          <Text style={styles.formLabel}>Número do contrato</Text>
-        <TextInput
-            style={styles.formInput}
-          placeholder="Digite o número do contrato"
-            placeholderTextColor="#999"
-          value={contrato}
-          onChangeText={setcontrato}
-          keyboardType="numeric"
-          onFocus={() => {
-            isFormFocusedRef.current = true;
-            setIsFormFocused(true);
-            scrollRef.current?.scrollToEnd({ animated: true });
-          }}
-          onBlur={() => {
-            isFormFocusedRef.current = false;
-            setIsFormFocused(false);
-          }}
-        />
+            value={dataNascimentoPJ}
+            onChangeText={(value) => setDataNascimentoPJ(utils.formatDataNascimentoInput(value))}
+            keyboardType="numeric"
+            maxLength={10}
+            onFocus={() => {
+              isFormFocusedRef.current = true;
+              setIsFormFocused(true);
+              scrollRef.current?.scrollToEnd({ animated: true });
+            }}
+            onBlur={() => {
+              isFormFocusedRef.current = false;
+              setIsFormFocused(false);
+            }}
+          />
         </View>
         
         <View style={[styles.cpfButtonRow, isTablet && styles.cpfButtonRowTablet]}>
@@ -659,20 +762,52 @@ export default function TotemHomeScreen() {
     </View>
   );
 
+  const renderRespFinanceiroStep = () => {
+    const nome = utils.formatNomeCompleto(beneficiario?.nome_resp_financeiro || '');
+    return (
+      <View style={styles.welcomeCard}>
+        <Text style={styles.pjWelcome}>
+          O responsável financeiro do plano é{' '}
+          <Text style={{ fontWeight: '700', color: palette.greenDark }}>{nome}</Text>?
+        </Text>
+        <Text style={[styles.pjNextStep, { marginTop: 20 }]}>
+          Confira se o nome está correto e clique em continuar para buscar suas faturas.
+        </Text>
+        <View style={[styles.cpfButtonRow, isTablet && styles.cpfButtonRowTablet]}>
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={handleVoltarRespFinanceiro}
+            disabled={loading}
+          >
+            <Text style={styles.cancelButtonText}>Voltar</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.greenButton, loading && styles.buttonDisabled]}
+            onPress={handleContinuarRespFinanceiro}
+            disabled={loading}
+          >
+            <Text style={styles.greenButtonText}>CONTINUAR</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
   const renderFaturasStep = () => (
     <View style={[styles.card, styles.faturaScreenContainer]}>
-      <Text style={styles.cardTitle}>Faturas em aberto</Text>
-      <Text style={styles.muted}>{resumoFaturas}</Text>
-
       {!faturas.length ? (
-        <View style={styles.semFaturaContainer}>
-          <Text style={styles.semFaturaTexto}>Nenhuma fatura em aberto no momento.</Text>
+        <>
+          <View style={styles.semFaturaEmptyState}>
+            <Text style={styles.semFaturaMensagemBonita}>Nenhuma fatura em aberto</Text>
+          </View>
           <View style={styles.buttonRow}>
             <SecondaryButton text="Consultar novo CPF/CNPJ" onPress={resetarFluxo} />
           </View>
-        </View>
+        </>
       ) : (
         <>
+          <Text style={styles.cardTitle}>Faturas em aberto</Text>
+          <Text style={styles.muted}>{resumoFaturas}</Text>
 
           <View style={styles.faturaHeader}>
             <Text style={styles.faturaHeaderText}>Data</Text>
@@ -734,36 +869,15 @@ export default function TotemHomeScreen() {
     </View>
   );
 
-  const handleWake = () => {
-    if (Platform.OS === 'web') {
-      setShouldFullscreen(true);
-      if (typeof window !== 'undefined') {
-        window.setTimeout(() => window.scrollTo(0, 1), 50);
-      }
-    }
-  };
-
   return (
     <View
       ref={rootRef}
       style={[styles.screenRoot, { width: viewportWidth, height: viewportHeight }]}
-      onTouchStart={handleWake}
-      onMouseDown={handleWake}
+      onStartShouldSetResponderCapture={() => {
+        markUserActive();
+        return false;
+      }}
     >
-      {isIdle && Platform.OS === 'web' && (
-        <View
-          style={{
-            position: 'absolute',
-            zIndex: 999,
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.2)',
-          }}
-          pointerEvents="none"
-        />
-      )}
       <View
         style={[
           styles.backgroundLayer,
@@ -786,7 +900,7 @@ export default function TotemHomeScreen() {
           >
             <Image
               source={require('@/assets/images/top_left.png')}
-              style={styles.decorImageFill}
+              style={styles.decorImageFill as ImageStyle}
               resizeMode="contain"
             />
           </View>
@@ -796,7 +910,7 @@ export default function TotemHomeScreen() {
           >
             <Image
               source={require('@/assets/images/top_right.png')}
-              style={styles.decorImageFill}
+              style={styles.decorImageFill as ImageStyle}
               resizeMode="contain"
             />
           </View>
@@ -806,7 +920,7 @@ export default function TotemHomeScreen() {
           >
             <Image
               source={require('@/assets/images/bottom_left.png')}
-              style={styles.decorImageFill}
+              style={styles.decorImageFill as ImageStyle}
               resizeMode="contain"
             />
           </View>
@@ -816,7 +930,7 @@ export default function TotemHomeScreen() {
           >
             <Image
               source={require('@/assets/images/bottom_right.png')}
-              style={styles.decorImageFill}
+              style={styles.decorImageFill as ImageStyle}
               resizeMode="contain"
             />
           </View>
@@ -827,9 +941,9 @@ export default function TotemHomeScreen() {
             <Image
               source={require('@/assets/images/atendente.png')}
               style={[
-                styles.atendenteImage,
+                styles.atendenteImage as ImageStyle,
                 { width: atendenteWidth, height: atendenteHeight },
-                isTablet && styles.atendenteImageTablet,
+                isTablet && (styles.atendenteImageTablet as ImageStyle),
               ]}
               resizeMode="contain"
             />
@@ -853,6 +967,8 @@ export default function TotemHomeScreen() {
             ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            scrollEventThrottle={100}
+            onScroll={markUserActive}
           >
             {renderStatus()}
             {step === 'cpf' && renderCPFStep()}
@@ -862,6 +978,11 @@ export default function TotemHomeScreen() {
                 {renderContratoStep()}
               </View>
             )}
+            {step === 'resp_financeiro' && (
+              <View style={isTablet ? styles.welcomeCardTablet : undefined}>
+                {renderRespFinanceiroStep()}
+              </View>
+            )}
             {step === 'faturas' && (
               <View style={isTablet ? styles.welcomeCardTablet : undefined}>
                 {renderFaturasStep()}
@@ -869,7 +990,11 @@ export default function TotemHomeScreen() {
             )}
             {loading && (
               <View style={styles.loading}>
-                <Text style={styles.loadingText}>Processando...</Text>
+                <Text style={styles.loadingText}>
+                  {step === 'faturas' && selectedFatura
+                    ? `Carregando boleto da fatura ${selectedFatura}...`
+                    : 'Processando...'}
+                </Text>
                 <ActivityIndicator color={palette.primary} style={{ marginLeft: 8 }} />
               </View>
             )}
@@ -882,7 +1007,13 @@ export default function TotemHomeScreen() {
         animationType="fade"
         onRequestClose={handleFecharBoletoModal}
       >
-        <View style={styles.modalBackdrop}>
+        <View
+          style={styles.modalBackdrop}
+          onStartShouldSetResponderCapture={() => {
+            markUserActive();
+            return false;
+          }}
+        >
           <View style={styles.modalCard}>
 
             <PdfViewer

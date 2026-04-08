@@ -21,36 +21,28 @@ export default function ServicosScreen() {
     cpf_titular: string;
     tipo_plano: string;
     registro_ans: string;
+    data_nascimento_titular?: string;
   }>();
 
   const [loading, setLoading] = useState(false);
-  const [showCnpjInput, setShowCnpjInput] = useState(false);
-  const [cnpj, setCnpj] = useState('');
-  const [contrato, setContrato] = useState('');
+  const [showDataNascimentoInput, setShowDataNascimentoInput] = useState(false);
+  const [dataNascimentoPJ, setDataNascimentoPJ] = useState('');
 
   const beneficiario: Beneficiario = {
     nome_titular: params.nome_titular || '',
     cpf_titular: params.cpf_titular || '',
     tipo_plano: params.tipo_plano || 'PF',
     registro_ans: params.registro_ans,
+    data_nascimento_titular: params.data_nascimento_titular,
   };
 
   const isPJ = (beneficiario.tipo_plano || '').toUpperCase() === 'PJ';
   const nomeFormatado = utils.formatNomeCompleto(beneficiario.nome_titular || '');
   const tipoPlanoDescricao = isPJ ? 'Pessoa Juridica' : 'Pessoa Fisica';
 
-  const formatCNPJ = (value: string) => {
-    const numbers = value.replace(/\D/g, '');
-    if (numbers.length <= 2) return numbers;
-    if (numbers.length <= 5) return `${numbers.slice(0, 2)}.${numbers.slice(2)}`;
-    if (numbers.length <= 8) return `${numbers.slice(0, 2)}.${numbers.slice(2, 5)}.${numbers.slice(5)}`;
-    if (numbers.length <= 12) return `${numbers.slice(0, 2)}.${numbers.slice(2, 5)}.${numbers.slice(5, 8)}/${numbers.slice(8)}`;
-    return `${numbers.slice(0, 2)}.${numbers.slice(2, 5)}.${numbers.slice(5, 8)}/${numbers.slice(8, 12)}-${numbers.slice(12, 14)}`;
-  };
-
   const handleBoletos = async () => {
     if (isPJ) {
-      setShowCnpjInput(true);
+      setShowDataNascimentoInput(true);
       return;
     }
 
@@ -60,27 +52,45 @@ export default function ServicosScreen() {
   };
 
   const handleBuscarFaturasPJ = async () => {
-    const cnpjDigits = utils.digits(cnpj);
-    const contratoDigits = utils.digits(contrato);
-
-    if (cnpjDigits.length !== 14) {
-      Alert.alert('Erro', 'Digite um CNPJ valido com 14 numeros.');
+    const digitosInformados = utils.digits(dataNascimentoPJ);
+    if (digitosInformados.length !== 8) {
+      Alert.alert('Erro', 'Informe a data de nascimento completa (DD/MM/AAAA).');
       return;
     }
 
-    if (!contratoDigits) {
-      Alert.alert('Erro', 'Digite o numero do contrato.');
+    const esperado = utils.normalizeDataTitularToDdmmYyyyDigits(beneficiario.data_nascimento_titular);
+    if (!esperado) {
+      Alert.alert(
+        'Erro',
+        'Nao foi possivel validar a data de nascimento no cadastro. Procure o atendimento.',
+      );
+      return;
+    }
+    if (digitosInformados !== esperado) {
+      Alert.alert('Erro', 'A data de nascimento nao confere com o cadastro.');
       return;
     }
 
-    await buscarFaturasENavegar(cnpjDigits, contratoDigits);
+    const cpfTitular = utils.digits(beneficiario.cpf_titular || '');
+    if (cpfTitular.length !== 11) {
+      Alert.alert('Erro', 'CPF do titular invalido no cadastro.');
+      return;
+    }
+
+    await buscarFaturasENavegar(cpfTitular, digitosInformados, 'data_nascimento_titular');
   };
 
-  const buscarFaturasENavegar = async (cpfCnpj: string, contratoNum: string) => {
+  const buscarFaturasENavegar = async (
+    cpfCnpj: string,
+    segundoParam: string,
+    segundoCampo: 'contrato' | 'data_nascimento_titular' = 'contrato',
+  ) => {
     setLoading(true);
 
     try {
-      const faturas = await buscarFaturas(cpfCnpj, contratoNum);
+      const { faturas } = await buscarFaturas(cpfCnpj, segundoParam, {
+        segundoCampo,
+      });
 
       if (!faturas || faturas.length === 0) {
         Alert.alert(
@@ -97,7 +107,7 @@ export default function ServicosScreen() {
         params: {
           nome_titular: beneficiario.nome_titular,
           cpf_titular: cpfCnpj,
-          registro_ans: contratoNum,
+          registro_ans: segundoParam,
           faturas: JSON.stringify(faturas),
         },
       });
@@ -139,35 +149,26 @@ export default function ServicosScreen() {
           </Text>
         </Text>
 
-        {showCnpjInput ? (
+        {showDataNascimentoInput ? (
           <View style={styles.formContainer}>
             <Text style={styles.formLabel}>
-              Por se tratar de um contrato PJ, informe o CNPJ e o numero do contrato:
+              Informe sua data de nascimento (mesma do cadastro):
             </Text>
 
             <TextInput
               style={styles.input}
-              placeholder="CNPJ"
+              placeholder="DD/MM/AAAA"
               placeholderTextColor={colors.placeholder}
-              value={cnpj}
-              onChangeText={(v) => setCnpj(formatCNPJ(v))}
+              value={dataNascimentoPJ}
+              onChangeText={(v) => setDataNascimentoPJ(utils.formatDataNascimentoInput(v))}
               keyboardType="numeric"
-              maxLength={18}
-            />
-
-            <TextInput
-              style={styles.input}
-              placeholder="Numero do Contrato"
-              placeholderTextColor={colors.placeholder}
-              value={contrato}
-              onChangeText={setContrato}
-              keyboardType="numeric"
+              maxLength={10}
             />
 
             <View style={styles.buttonRow}>
               <TouchableOpacity
                 style={[styles.button, styles.secondaryButton]}
-                onPress={() => setShowCnpjInput(false)}
+                onPress={() => setShowDataNascimentoInput(false)}
                 disabled={loading}
               >
                 <Text style={styles.secondaryButtonText}>VOLTAR</Text>
