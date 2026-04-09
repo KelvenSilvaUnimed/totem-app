@@ -52,7 +52,8 @@ const styles = StyleSheet.create({
     zIndex: 0,
   },
   backgroundLayerFixed: {
-    position: 'fixed',
+    // RN (native) não aceita 'fixed'; no web queremos fundo travado.
+    position: (Platform.OS === 'web' ? ('fixed' as any) : 'absolute') as any,
   },
   safeArea: {
     flex: 1,
@@ -402,7 +403,7 @@ const styles = StyleSheet.create({
   homeInstrucaoCpf: {
     color: '#333333',
     fontSize: 26,
-    fontWeight: '400',
+    fontWeight: '700',
     textAlign: 'center',
     marginBottom: 28,
   },
@@ -443,6 +444,63 @@ const styles = StyleSheet.create({
     }),
   },
   homeCpfTextInput: {
+    flex: 1,
+    fontSize: 34,
+    fontWeight: '600',
+    color: '#333333',
+    backgroundColor: 'transparent',
+    paddingVertical: 4,
+    paddingLeft: 10,
+    borderWidth: 0,
+    ...Platform.select({
+      web: {
+        outlineStyle: 'none' as const,
+        outlineWidth: 0,
+        outlineColor: 'transparent',
+        boxShadow: 'none',
+      },
+      default: {},
+    }),
+  },
+
+  /** Campo padrão (mesmo visual do CPF inicial), reutilizável. */
+  totemFieldOuter: {
+    width: '100%',
+    maxWidth: 520,
+    position: 'relative',
+    alignSelf: 'center',
+    marginBottom: 28,
+    zIndex: 2,
+  },
+  totemFieldFloatingLabel: {
+    position: 'absolute',
+    top: -14,
+    left: 16,
+    zIndex: 10,
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 12,
+    paddingVertical: 2,
+    color: palette.greenDark,
+    fontSize: 21,
+    fontWeight: '600',
+  },
+  totemFieldBorder: {
+    borderWidth: 2,
+    borderColor: palette.greenDark,
+    borderRadius: 18,
+    backgroundColor: 'transparent',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: 16,
+    paddingRight: 20,
+    paddingVertical: 18,
+    minHeight: 76,
+    ...Platform.select({
+      web: { overflow: 'visible' as const },
+      default: {},
+    }),
+  },
+  totemFieldTextInput: {
     flex: 1,
     fontSize: 34,
     fontWeight: '600',
@@ -657,6 +715,23 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     textAlign: 'center',
     marginBottom: 12,
+  },
+  pjNascimentoInfo: {
+    color: palette.grayText,
+    fontSize: 26,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 22,
+    marginBottom: 38,
+    fontWeight: '600',
+  },
+  pjNascimentoFieldOuter: {
+    width: '100%',
+    maxWidth: 440,
+    position: 'relative',
+    alignSelf: 'center',
+    marginBottom: 28,
+    zIndex: 2,
   },
   greenButton: {
     backgroundColor: palette.greenDark,

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import type { ImageStyle, ScaledSize } from 'react-native';
 import { useFullscreen } from 'react-use';
+import { useLocalSearchParams } from 'expo-router';
 
 import {
     buscarBoleto,
@@ -43,14 +44,9 @@ type PendingFaturasRequest = {
 };
 type StatusType = 'ok' | 'warn' | 'err';
 
-/** Sem interação por este tempo → volta à tela inicial (CPF). */
-const IDLE_TIMEOUT_MS = 35_000;
-
 export default function TotemHomeScreen() {
   const rootRef = useRef<View | null>(null);
   const [shouldFullscreen, setShouldFullscreen] = useState(false);
-  const lastActivityRef = useRef(Date.now());
-  const loadingRef = useRef(false);
   const resetarFluxoRef = useRef<() => void>(() => {});
   useFullscreen(rootRef as RefObject<Element>, shouldFullscreen, {
     onClose: () => setShouldFullscreen(false),
@@ -89,9 +85,10 @@ export default function TotemHomeScreen() {
   const atendenteHeight = viewportHeight * (isTablet ? 0.67 : 0.55);
   const [step, setStep] = useState<Step>('cpf');
   const [cpf, setCpf] = useState('');
-  const [contratoPF, setContratoPF] = useState('');
-  /** Data de nascimento (fluxo PJ — confere com `data_nascimento_titular` do lookup). */
-  const [dataNascimentoPJ, setDataNascimentoPJ] = useState('');
+  /** PF: valida a data com `data_nascimento_titular` do lookup. */
+  const [dataNascimentoPF, setDataNascimentoPF] = useState('');
+  /** PJ: valida pelo número do contrato informado. */
+  const [contratoPJ, setContratoPJ] = useState('');
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<{ type: StatusType; message: string } | null>(null);
   const [beneficiario, setBeneficiario] = useState<Beneficiario | null>(null);
@@ -106,45 +103,15 @@ export default function TotemHomeScreen() {
   const isFormFocusedRef = useRef(false);
   const scrollRef = useRef<ScrollView | null>(null);
   const [pendingFaturasRequest, setPendingFaturasRequest] = useState<PendingFaturasRequest | null>(null);
+  const params = useLocalSearchParams<{ idleReset?: string }>();
 
-  const markUserActive = useCallback(() => {
-    lastActivityRef.current = Date.now();
-  }, []);
-
+  // Quando o layout disparar idleReset, reseta o fluxo deste screen.
   useEffect(() => {
-    loadingRef.current = loading;
-  }, [loading]);
-
-  /** Web: qualquer clique/tecla/scroll reinicia o tempo de inatividade. */
-  useEffect(() => {
-    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
-    const mark = () => {
-      lastActivityRef.current = Date.now();
-    };
-    window.addEventListener('pointerdown', mark, true);
-    window.addEventListener('keydown', mark, true);
-    window.addEventListener('scroll', mark, true);
-    return () => {
-      window.removeEventListener('pointerdown', mark, true);
-      window.removeEventListener('keydown', mark, true);
-      window.removeEventListener('scroll', mark, true);
-    };
-  }, []);
-
-  /** Nova etapa ou modal: considera contexto novo para o temporizador. */
-  useEffect(() => {
-    markUserActive();
-  }, [step, isBoletoModalVisible, markUserActive]);
-
-  /** Verifica inatividade a cada 500 ms (não dispara durante carregamento). */
-  useEffect(() => {
-    const id = setInterval(() => {
-      if (loadingRef.current) return;
-      if (Date.now() - lastActivityRef.current < IDLE_TIMEOUT_MS) return;
+    if (params?.idleReset) {
       resetarFluxoRef.current();
-    }, 500);
-    return () => clearInterval(id);
-  }, []);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params?.idleReset]);
 
   useEffect(() => {
     if (Platform.OS !== 'web') return;
@@ -299,6 +266,17 @@ export default function TotemHomeScreen() {
     setStatus(null);
     try {
       const { faturas: lista } = await buscarFaturas(cpfCnpj, segundoParam, opts);
+      // Regra do totem: se for PJ e a busca por contrato não retornar nada,
+      // tratar como "contrato incorreto" e manter na tela do contrato.
+      if (beneficiario?.tipo_plano === 'PJ' && opts?.segundoCampo === 'contrato' && lista.length === 0) {
+        setFaturas([]);
+        setSelectedFatura(null);
+        setBoletoAtual(null);
+        setStep('contrato');
+        setStatusMessage('warn', 'Número do contrato está incorreto.');
+        return;
+      }
+
       setFaturas(lista);
       setStep('faturas');
       setStatusMessage('ok', `Encontramos ${lista.length} fatura${lista.length === 1 ? '' : 's'} em aberto.`);
@@ -322,6 +300,8 @@ export default function TotemHomeScreen() {
     voltarPara: 'servicos' | 'contrato',
   ) => {
     if (possuiRespFinanceiroAtivo(beneficiario)) {
+      // Ao avançar para a confirmação, limpa avisos anteriores (ex.: contrato incorreto).
+      setStatus(null);
       setPendingFaturasRequest({ cpfCnpj, segundoParam, opts, voltarPara });
       setStep('resp_financeiro');
       return;
@@ -370,35 +350,22 @@ export default function TotemHomeScreen() {
       return;
     }
 
-    const digitosInformados = utils.digits(dataNascimentoPJ);
-    if (digitosInformados.length !== 8) {
-      setStatusMessage('warn', 'Informe a data de nascimento completa (DD/MM/AAAA).');
+    const contratoDigits = utils.digits(contratoPJ);
+    if (!contratoDigits) {
+      setStatusMessage('warn', 'Informe o número do contrato.');
       return;
     }
 
-    const esperado = utils.normalizeDataTitularToDdmmYyyyDigits(beneficiario.data_nascimento_titular);
-    if (!esperado) {
-      setStatusMessage(
-        'err',
-        'Não foi possível validar a data de nascimento no cadastro. Procure o atendimento.',
-      );
-      return;
-    }
-    if (digitosInformados !== esperado) {
-      setStatusMessage('warn', 'A data de nascimento não confere com o cadastro.');
-      return;
-    }
-
-    const cpfTitular = utils.digits(beneficiario.cpf_titular || '');
-    if (cpfTitular.length !== 11) {
-      setStatusMessage('err', 'CPF do titular inválido no cadastro.');
+    const contratoEsperado = utils.digits(beneficiario.registro_ans || '');
+    if (contratoEsperado && contratoDigits.length === contratoEsperado.length && contratoDigits !== contratoEsperado) {
+      setStatusMessage('warn', 'O número do contrato não confere com o cadastro.');
       return;
     }
 
     solicitarFaturasComEtapaRespFinanceiro(
-      cpfTitular,
-      digitosInformados,
-      { segundoCampo: 'data_nascimento_titular' },
+      utils.digits(beneficiario.cpf_titular || ''),
+      contratoDigits,
+      { segundoCampo: 'contrato' },
       'contrato',
     );
   };
@@ -535,8 +502,8 @@ export default function TotemHomeScreen() {
     setIsBoletoModalVisible(false);
     setBoletoModalUrl(null);
     setCpf('');
-    setContratoPF('');
-    setDataNascimentoPJ('');
+    setDataNascimentoPF('');
+    setContratoPJ('');
     setPendingFaturasRequest(null);
     setBeneficiario(null);
     setFaturas([]);
@@ -570,12 +537,11 @@ export default function TotemHomeScreen() {
       <Text style={styles.homeBemVindo}>Bem-vindo!</Text>
       <Text style={styles.homeInstrucaoCpf}>Informe o CPF do titular</Text>
 
-      <View style={styles.homeCpfFieldOuter}>
-        <Text style={styles.homeCpfFloatingLabel}>CPF do titular</Text>
-        <View style={styles.homeCpfFieldBorder}>
+      <View style={styles.totemFieldOuter}>
+        <View style={styles.totemFieldBorder}>
           <Ionicons name="document-text-outline" size={36} color={palette.greenDark} />
           <TextInput
-            style={styles.homeCpfTextInput}
+            style={styles.totemFieldTextInput}
             placeholder="000.000.000-00"
             placeholderTextColor="#9ca3af"
             value={cpf}
@@ -595,9 +561,7 @@ export default function TotemHomeScreen() {
         activeOpacity={0.85}
       >
         <Text style={styles.homeConfirmButtonText}>CONFIRMAR</Text>
-        <View style={styles.homeConfirmCheckCircle}>
-          <Ionicons name="checkmark" size={26} color="#ffffff" />
-        </View>
+        
       </TouchableOpacity>
     </View>
   );
@@ -610,11 +574,10 @@ export default function TotemHomeScreen() {
     if (isPessoaJuridica) {
       return (
         <View style={styles.welcomeCard}>
-          <Text style={styles.pjTitle}>2ª via de boleto</Text>
           <View style={styles.pjBadge}>
             <Text style={styles.pjBadgeText}>PESSOA JURÍDICA</Text>
           </View>
-          <Text style={styles.pjWelcome}>Bem vindo {utils.formatNomeCompleto(beneficiario?.nome_titular || '')}!!</Text>
+          <Text style={styles.pjWelcome}>Olá, {utils.formatNomeCompleto(beneficiario?.nome_titular || '')}!!</Text>
           {nomeEmpresaDoLookup ? (
             <Text style={[styles.pjNextStep, { fontStyle: 'normal', fontWeight: '600', color: palette.greenDark }]}>
               Encontramos o seu vínculo com a empresa {nomeEmpresaDoLookup}.
@@ -631,7 +594,7 @@ export default function TotemHomeScreen() {
                 onPress={handleServicoSelecionado} 
                 disabled={loading}
               >
-                <Text style={styles.greenButtonText}>INFORMAR DATA DE NASCIMENTO</Text>
+                <Text style={styles.greenButtonText}>INFORMAR NÚMERO DO CONTRATO</Text>
               </TouchableOpacity>
             </View>
             <View style={[styles.buttonRow, { marginTop: 24 }]}>
@@ -644,49 +607,66 @@ export default function TotemHomeScreen() {
 
     return (
       <View style={styles.welcomeCard}>
-        <Text style={styles.pjTitle}>2ª via de boleto</Text>
         <View style={styles.pfBadge}>
           <Text style={styles.pfBadgeText}>PESSOA FÍSICA</Text>
       </View>
-        <Text style={styles.pjWelcome}>Bem vindo {utils.formatNomeCompleto(beneficiario?.nome_titular || '')}!</Text>
-        <Text style={styles.pjNextStep}>Próximo passo:</Text>
+        <Text style={styles.pjWelcome}>Olá, {utils.formatNomeCompleto(beneficiario?.nome_titular || '')}!</Text>
+        <Text style={styles.pjNascimentoInfo}>Informe a data de nascimento do titular</Text>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'position' : 'padding'}
           enabled={Platform.OS !== 'web'}
         >
           <View style={[styles.formContainer, isTablet && styles.formContainerTablet]}>
-            <Text style={styles.formLabel}>Número do contrato</Text>
-            <TextInput
-              style={styles.formInput}
-              placeholder="Digite o número do contrato"
-              placeholderTextColor="#999"
-              value={contratoPF}
-              onChangeText={setContratoPF}
-              keyboardType="numeric"
-              onFocus={() => {
-                isFormFocusedRef.current = true;
-                setIsFormFocused(true);
-                scrollRef.current?.scrollToEnd({ animated: true });
-              }}
-              onBlur={() => {
-                isFormFocusedRef.current = false;
-                setIsFormFocused(false);
-              }}
-            />
+            <View style={styles.pjNascimentoFieldOuter}>
+              <View style={styles.totemFieldBorder}>
+                <Ionicons name="calendar-outline" size={36} color={palette.greenDark} />
+                <TextInput
+                  style={styles.totemFieldTextInput}
+                  placeholderTextColor="#9ca3af"
+                  value={dataNascimentoPF}
+                  onChangeText={(value) => setDataNascimentoPF(utils.formatDataNascimentoInput(value))}
+                  keyboardType="numeric"
+                  maxLength={10}
+                  underlineColorAndroid="transparent"
+                  onFocus={() => {
+                    isFormFocusedRef.current = true;
+                    setIsFormFocused(true);
+                    scrollRef.current?.scrollToEnd({ animated: true });
+                  }}
+                  onBlur={() => {
+                    isFormFocusedRef.current = false;
+                    setIsFormFocused(false);
+                  }}
+                />
+              </View>
+            </View>
           </View>
           <View style={styles.buttonRow}>
             <TouchableOpacity 
               style={[styles.greenButton, loading && styles.buttonDisabled]} 
               onPress={() => {
-                const contratoNumero = utils.digits(contratoPF);
-                if (!contratoNumero) {
-                  setStatusMessage('warn', 'Informe o número do contrato.');
+                if (!beneficiario) return;
+                const digitosInformados = utils.digits(dataNascimentoPF);
+                if (digitosInformados.length !== 8) {
+                  setStatusMessage('warn', 'Informe a data de nascimento completa (DD/MM/AAAA).');
+                  return;
+                }
+                const esperado = utils.normalizeDataTitularToDdmmYyyyDigits(beneficiario.data_nascimento_titular);
+                if (!esperado) {
+                  setStatusMessage(
+                    'err',
+                    'Não foi possível validar a data de nascimento no cadastro. Procure o atendimento.',
+                  );
+                  return;
+                }
+                if (digitosInformados !== esperado) {
+                  setStatusMessage('warn', 'A data de nascimento não confere com o cadastro.');
                   return;
                 }
                 solicitarFaturasComEtapaRespFinanceiro(
-                  utils.digits(beneficiario?.cpf_titular || ''),
-                  contratoNumero,
-                  undefined,
+                  utils.digits(beneficiario.cpf_titular || ''),
+                  digitosInformados,
+                  { segundoCampo: 'data_nascimento_titular' },
                   'servicos',
                 );
               }} 
@@ -705,41 +685,46 @@ export default function TotemHomeScreen() {
 
   const renderContratoStep = () => (
     <View style={styles.welcomeCard}>
-      <Text style={styles.pjTitle}>2ª via de boleto</Text>
       <View style={styles.pjBadge}>
         <Text style={styles.pjBadgeText}>PESSOA JURÍDICA</Text>
       </View>
-      <Text style={styles.pjWelcome}>Bem vindo {utils.formatNomeCompleto(beneficiario?.nome_titular || '')}!</Text>
+      <Text style={styles.pjWelcome}>Olá, {utils.formatNomeCompleto(beneficiario?.nome_titular || '')}!</Text>
       {nomeEmpresaDoLookup ? (
         <Text style={[styles.pjNextStep, { fontStyle: 'normal', fontWeight: '600', color: palette.greenDark }]}>
           Encontramos o seu vínculo com a empresa {nomeEmpresaDoLookup}.
         </Text>
       ) : null}
+
+      <Text style={styles.pjNascimentoInfo}>Informe o número do contrato</Text>
       
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'position' : 'padding'}
         enabled={Platform.OS !== 'web'}
       >
         <View style={[styles.formContainer, isTablet && styles.formContainerTablet]}>
-          <Text style={styles.formLabel}>Data de nascimento</Text>
-          <TextInput
-            style={styles.formInput}
-            placeholder="DD/MM/AAAA"
-            placeholderTextColor="#999"
-            value={dataNascimentoPJ}
-            onChangeText={(value) => setDataNascimentoPJ(utils.formatDataNascimentoInput(value))}
-            keyboardType="numeric"
-            maxLength={10}
-            onFocus={() => {
-              isFormFocusedRef.current = true;
-              setIsFormFocused(true);
-              scrollRef.current?.scrollToEnd({ animated: true });
-            }}
-            onBlur={() => {
-              isFormFocusedRef.current = false;
-              setIsFormFocused(false);
-            }}
-          />
+          <View style={styles.totemFieldOuter}>
+            <View style={styles.totemFieldBorder}>
+              <Ionicons name="document-text-outline" size={36} color={palette.greenDark} />
+              <TextInput
+                style={styles.totemFieldTextInput}
+                placeholder="Digite o número do contrato"
+                placeholderTextColor="#9ca3af"
+                value={contratoPJ}
+                onChangeText={setContratoPJ}
+                keyboardType="numeric"
+                underlineColorAndroid="transparent"
+                onFocus={() => {
+                  isFormFocusedRef.current = true;
+                  setIsFormFocused(true);
+                  scrollRef.current?.scrollToEnd({ animated: true });
+                }}
+                onBlur={() => {
+                  isFormFocusedRef.current = false;
+                  setIsFormFocused(false);
+                }}
+              />
+            </View>
+          </View>
         </View>
         
         <View style={[styles.cpfButtonRow, isTablet && styles.cpfButtonRowTablet]}>
@@ -873,10 +858,6 @@ export default function TotemHomeScreen() {
     <View
       ref={rootRef}
       style={[styles.screenRoot, { width: viewportWidth, height: viewportHeight }]}
-      onStartShouldSetResponderCapture={() => {
-        markUserActive();
-        return false;
-      }}
     >
       <View
         style={[
@@ -968,7 +949,6 @@ export default function TotemHomeScreen() {
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             scrollEventThrottle={100}
-            onScroll={markUserActive}
           >
             {renderStatus()}
             {step === 'cpf' && renderCPFStep()}
@@ -1007,13 +987,7 @@ export default function TotemHomeScreen() {
         animationType="fade"
         onRequestClose={handleFecharBoletoModal}
       >
-        <View
-          style={styles.modalBackdrop}
-          onStartShouldSetResponderCapture={() => {
-            markUserActive();
-            return false;
-          }}
-        >
+        <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
 
             <PdfViewer
