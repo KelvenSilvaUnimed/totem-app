@@ -33,7 +33,13 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import PdfViewer from '@/components/pdf-viewer';
 import styles, { palette } from '@/styles/totem.styles';
 
-type Step = 'cpf' | 'servicos' | 'contrato' | 'resp_financeiro' | 'faturas';
+type Step =
+  | 'cpf'
+  | 'servicos'
+  | 'contrato'
+  | 'resp_financeiro'
+  | 'resp_financeiro_ajuda'
+  | 'faturas';
 
 type PendingFaturasRequest = {
   cpfCnpj: string;
@@ -314,13 +320,6 @@ export default function TotemHomeScreen() {
     const p = pendingFaturasRequest;
     setPendingFaturasRequest(null);
     void carregarFaturas(p.cpfCnpj, p.segundoParam, p.opts);
-  };
-
-  const handleVoltarRespFinanceiro = () => {
-    if (!pendingFaturasRequest) return;
-    const { voltarPara } = pendingFaturasRequest;
-    setPendingFaturasRequest(null);
-    setStep(voltarPara);
   };
 
   const handleServicoSelecionado = () => {
@@ -611,12 +610,12 @@ export default function TotemHomeScreen() {
           <Text style={styles.pfBadgeText}>PESSOA FÍSICA</Text>
       </View>
         <Text style={styles.pjWelcome}>Olá, {utils.formatNomeCompleto(beneficiario?.nome_titular || '')}!</Text>
-        <Text style={styles.pjNascimentoInfo}>Informe a data de nascimento do titular</Text>
+        <Text style={styles.pjNascimentoInfo}>Para a sua segurança, informe a data de nascimento do titular</Text>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'position' : 'padding'}
           enabled={Platform.OS !== 'web'}
         >
-          <View style={[styles.formContainer, isTablet && styles.formContainerTablet]}>
+          <View style={[styles.formContainerPfData, isTablet && styles.formContainerTablet]}>
             <View style={styles.pjNascimentoFieldOuter}>
               <View style={styles.totemFieldBorder}>
                 <Ionicons name="calendar-outline" size={36} color={palette.greenDark} />
@@ -641,7 +640,7 @@ export default function TotemHomeScreen() {
               </View>
             </View>
           </View>
-          <View style={styles.buttonRow}>
+          <View style={[styles.buttonRow, styles.buttonRowTightTop]}>
             <TouchableOpacity 
               style={[styles.greenButton, loading && styles.buttonDisabled]} 
               onPress={() => {
@@ -761,10 +760,10 @@ export default function TotemHomeScreen() {
         <View style={[styles.cpfButtonRow, isTablet && styles.cpfButtonRowTablet]}>
           <TouchableOpacity
             style={styles.cancelButton}
-            onPress={handleVoltarRespFinanceiro}
+            onPress={() => setStep('resp_financeiro_ajuda')}
             disabled={loading}
           >
-            <Text style={styles.cancelButtonText}>Voltar</Text>
+            <Text style={styles.cancelButtonText}>Responsável incorreto?</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.greenButton, loading && styles.buttonDisabled]}
@@ -777,6 +776,28 @@ export default function TotemHomeScreen() {
       </View>
     );
   };
+
+  const renderRespFinanceiroAjudaStep = () => (
+    <View style={styles.welcomeCard}>
+      <View style={styles.rfAjudaIconWrap}>
+        <Ionicons name="information-circle-outline" size={56} color={palette.greenDark} />
+      </View>
+      <Text style={styles.pjWelcome}>Fale com um atendente</Text>
+      <Text style={styles.rfAjudaMensagem}>
+        Caso o nome do responsável financeiro exibido na tela anterior não esteja correto, procure um
+        atendente para atualizar o cadastro e concluir a consulta de faturas.
+      </Text>
+      <View style={[styles.buttonRow, { marginTop: 28 }]}>
+        <TouchableOpacity
+          style={[styles.greenButton, loading && styles.buttonDisabled]}
+          onPress={handleEncerrarAtendimento}
+          disabled={loading}
+        >
+          <Text style={styles.greenButtonText}>Encerrar atendimento</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 
   const renderFaturasStep = () => (
     <View style={[styles.card, styles.faturaScreenContainer]}>
@@ -961,6 +982,11 @@ export default function TotemHomeScreen() {
             {step === 'resp_financeiro' && (
               <View style={isTablet ? styles.welcomeCardTablet : undefined}>
                 {renderRespFinanceiroStep()}
+              </View>
+            )}
+            {step === 'resp_financeiro_ajuda' && (
+              <View style={isTablet ? styles.welcomeCardTablet : undefined}>
+                {renderRespFinanceiroAjudaStep()}
               </View>
             )}
             {step === 'faturas' && (
