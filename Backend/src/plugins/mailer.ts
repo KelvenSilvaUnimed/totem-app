@@ -1,8 +1,7 @@
 // src/plugins/mailer.ts
 import type { FastifyPluginAsync } from 'fastify';
-import nodemailer, { Transporter } from 'nodemailer';
-import type SMTPTransport from 'nodemailer/lib/smtp-transport'; // <-- ADICIONE
-import { CONFIG } from '../config/env.js'; // <-- use .js se estiver em NodeNext
+import nodemailer, { type Transporter } from 'nodemailer';
+import { CONFIG } from '../config/env.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -11,6 +10,7 @@ declare module 'fastify' {
 }
 
 export const mailerPlugin: FastifyPluginAsync = async (fastify) => {
+  // 1. Verificação de segurança
   if (!CONFIG.SMTP_HOST || !CONFIG.SMTP_USER || !CONFIG.SMTP_PASS) {
     fastify.log.warn('SMTP não configurado: /api/send-boleto ficará indisponível');
     fastify.decorate('mailer', {
@@ -21,16 +21,20 @@ export const mailerPlugin: FastifyPluginAsync = async (fastify) => {
     return;
   }
 
-  // ✅ Tipar corretamente como SMTPTransport.Options
-  const transporterOptions: SMTPTransport.Options = {
-    host: CONFIG.SMTP_HOST!,                 // podemos usar ! porque já validamos acima
+  // 2. Criação do transporte direto (o TS infere os tipos automaticamente aqui)
+  const transporter = nodemailer.createTransport({
+    host: CONFIG.SMTP_HOST,
     port: CONFIG.SMTP_PORT,
     secure: CONFIG.SMTP_PORT === 465,
-    auth: { user: CONFIG.SMTP_USER!, pass: CONFIG.SMTP_PASS! },
-    // opcional: incluir tls já aqui
-    ...(CONFIG.SMTP_TLS_REJECT_UNAUTHORIZED ? {} : { tls: { rejectUnauthorized: false } })
-  };
+    auth: { 
+      user: CONFIG.SMTP_USER, 
+      pass: CONFIG.SMTP_PASS 
+    },
+    tls: CONFIG.SMTP_TLS_REJECT_UNAUTHORIZED 
+      ? undefined 
+      : { rejectUnauthorized: false }
+  });
 
-  const transporter = nodemailer.createTransport(transporterOptions);
+  // 3. Registro no Fastify
   fastify.decorate('mailer', transporter);
 };

@@ -14,20 +14,15 @@ const DEFAULT_CORS_ORIGINS = [
     'http://localhost:8081'
 ].join(',');
 const schema = z.object({
-    // OAuth
     CLIENT_ID: z.string().min(1),
     CLIENT_SECRET: z.string().min(1),
-    // Server
     PORT: z.coerce.number().int().positive().default(3000),
-    // Sessão (JWT)
     JWT_SECRET: z.string().min(10).default('change-me-please'),
-    // Endpoint Pessoas – campo do documento no payload
     PESSOAS_DOC_FIELD: z.string().default('cpf'),
     MOCK_PESSOAS: z
         .string()
         .default('false')
         .transform((v) => /^(1|true|yes|sim|y)$/i.test(v.trim())),
-    // SMTP
     SMTP_HOST: z.string().optional(),
     SMTP_PORT: z.coerce.number().int().positive().default(587),
     SMTP_USER: z.string().optional(),
@@ -37,10 +32,8 @@ const schema = z.object({
         .string()
         .default('true')
         .transform((v) => !/^(0|false|no)$/i.test(v.trim())),
-    // Segurança
     FRAME_ANCESTORS: z.string().default(DEFAULT_FRAME_ANCESTORS),
     CORS_ORIGINS: z.string().default(DEFAULT_CORS_ORIGINS),
-    // ImpressÃ£o
     PRINT_HOST: z.string().optional(),
     PRINT_PORT: z.coerce.number().int().positive().default(9100),
     PRINT_QUEUE: z.string().optional(),

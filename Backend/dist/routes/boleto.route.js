@@ -180,7 +180,7 @@ export const boletoRoute = async (fastify) => {
         const body = request.body;
         const { numeroFatura } = body ?? {};
         if (!numeroFatura) {
-            return reply.code(400).send({ error: 'numeroFatura � obrigat�rio' });
+            return reply.code(400).send({ error: 'numero fatura é permitido' });
         }
         const url = await buscarUrlBoleto(numeroFatura);
         fastify.log.info(`/api/boleto -> ${url ? 'OK' : 'NOK'} [${Date.now() - started}ms]`);
@@ -190,7 +190,7 @@ export const boletoRoute = async (fastify) => {
         const body = request.body;
         const { url } = body ?? {};
         if (!url || !isAllowedDocUrl(url)) {
-            return reply.code(400).send({ error: 'URL inv�lida ou n�o permitida.' });
+            return reply.code(400).send({ error: 'URL invalida ou nao permitida.' });
         }
         const { statusCode, headers, body: stream } = await undiciRequest(url);
         if (statusCode !== 200)
@@ -314,7 +314,7 @@ export const boletoRoute = async (fastify) => {
         const subject = `Boleto ${numeroFatura ? `- Fatura ${numeroFatura}` : ''}`.trim();
         const proxyLink = `${request.protocol}://${request.headers.host}/api/pdf?url=${encodeURIComponent(url)}`;
         const html = `
-<p>Ol�,</p>
+<p>Olá,</p>
 <p>Segue o link para visualizar/baixar seu boleto ${numeroFatura ? `da fatura <strong>${numeroFatura}</strong>` : ''}:</p>
 <p><a href="${url}" target="_blank" rel="noreferrer">${url}</a></p>
 <p>Ou visualize via proxy:</p>

@@ -63,7 +63,12 @@ export async function consultarPessoaPorDocumento(documento) {
             cpf_resp_financeiro: selected?.cpf_resp_financeiro ?? '',
             possui_resp_financeiro: selected?.possui_resp_financeiro ?? 'N',
             pes_cod: selected?.pes_cod ?? selected?.codigo_pessoa ?? selected?.cod_pessoa,
-            nome_empresa: selected?.nome_empresa ?? '',
+            nome_empresa: selected?.nome_empresa ||
+                selected?.razao_social ||
+                selected?.razaoSocial ||
+                selected?.nome_fantasia ||
+                selected?.nomeFantasia ||
+                '',
             cnpj_caepf_empresa: selected?.cnpj_caepf_empresa ?? '',
         };
     };

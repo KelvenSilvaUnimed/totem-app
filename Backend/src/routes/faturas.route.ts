@@ -9,55 +9,87 @@ const API_FATURAS = 'https://api.unimedpatos.sgusuite.com.br/api/procedure/p_prc
 interface FaturasBody {
   cpfCnpj?: string;
   contrato?: string;
-  /** Alternativa ao contrato (fluxo PJ): data do titular em DD/MM/AAAA ou 8 dígitos DDMMAAAA. */
   data_nascimento_titular?: string;
+  cpf_resp?: string;
 }
 
 interface UnimedResponse {
-  content?: unknown[];
+  content?: any[];
 }
 
 export const faturasRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{ Body: FaturasBody }>('/api/faturas', async (request, reply) => {
     const started = Date.now();
-    const { cpfCnpj, contrato, data_nascimento_titular } = request.body || {};
+    const { cpfCnpj, data_nascimento_titular, cpf_resp } = request.body || {};
 
+    // Limpamos o que o usuário digitou no Totem
     const cpfCnpjDigits = onlyDigits(cpfCnpj || '');
-    const contratoDigits = onlyDigits(contrato || '');
     const dataNascDigits = onlyDigits(data_nascimento_titular || '');
-    const segundoParametro = contratoDigits || dataNascDigits;
-
-    if (!cpfCnpjDigits || !segundoParametro) {
-      return reply.code(400).send({
-        error: 'Dados incompletos',
-        message:
-          'Para buscar faturas, informe o CPF/CNPJ e o número do contrato, ou a data de nascimento do titular (fluxo PJ).',
-      });
-    }
-
-    const token = await getToken();
-
-    const isPj = cpfCnpjDigits.length > 11;
-    /** A procedure Unimed usa o campo `contrato` também para receber DDMMAAAA na validação PJ. */
-    const payload = { cpfCnpj: cpfCnpjDigits, contrato: segundoParametro };
+    const cpfRespDigitado = onlyDigits(cpf_resp || '');
 
     try {
-      /**
-       * Proteção: evita vazamento de dados quando alguém combina um CPF válido com um contrato de terceiro.
-       * Quando o identificador é CPF (11 dígitos) e a chamada está usando contrato,
-       * validamos se o contrato informado confere com o `registro_ans` do cadastro.
-       */
-      if (cpfCnpjDigits.length === 11 && contratoDigits) {
-        const pessoa = await consultarPessoaPorDocumento(cpfCnpjDigits);
-        const contratoCadastro = onlyDigits(pessoa?.registro_ans || '');
-        if (contratoCadastro && contratoCadastro !== contratoDigits) {
-          return reply.code(400).send({
-            error: 'Contrato inválido',
-            message: 'O número do contrato informado não possui vínculo com o CPF.',
+      // 1. Busca os dados reais no banco (Serviço Pessoas)
+      const pessoa = await consultarPessoaPorDocumento(cpfCnpjDigits);
+      
+      if (!pessoa) {
+        return reply.code(404).send({ error: 'Cadastro não encontrado' });
+      }
+
+      // 2. Validação da Data de Nascimento (Sempre obrigatória para PF)
+      if (dataNascDigits !== onlyDigits(pessoa.data_nascimento_titular || '')) {
+        return reply.code(400).send({ error: 'Data de nascimento incorreta.' });
+      }
+
+      const isPJ = pessoa.tipo_plano === 'PJ';
+      const possuiResp = pessoa.possui_resp_financeiro === 'S';
+      const cpfRespNoBanco = onlyDigits(pessoa.cpf_resp_financeiro || '');
+
+      // 3. NOVA TRAVA: Validação do CPF do Responsável
+      if (!isPJ && possuiResp) {
+        if (!cpfRespDigitado) {
+          return reply.code(400).send({ 
+            step: 'NEED_CPF_RESP', 
+            message: 'Este plano possui responsável financeiro. Informe o CPF do pagador.' 
+          });
+        }
+
+        // Compara o que foi digitado com o que está no banco de dados
+        if (cpfRespDigitado !== cpfRespNoBanco) {
+          return reply.code(401).send({ 
+            error: 'Acesso negado', 
+            message: 'O CPF do responsável informado não confere com o cadastro deste beneficiário.' 
           });
         }
       }
 
+      // 4. Preparação para a API do Fornecedor
+      const token = await getToken();
+      const chaveDocumento = isPJ ? 'cnpj' : 'cpf';
+      
+      let documentoEnvio: string;
+      let contratoEnvio: string | undefined;
+
+      if (isPJ) {
+        documentoEnvio = cpfCnpjDigits;
+        contratoEnvio = onlyDigits(pessoa.registro_ans || '');
+      } else if (possuiResp) {
+        // Se passou na validação acima, usamos o CPF que foi validado
+        documentoEnvio = cpfRespNoBanco;
+        contratoEnvio = undefined; 
+      } else {
+        documentoEnvio = cpfCnpjDigits;
+        contratoEnvio = pessoa.data_nascimento_titular;
+      }
+
+      const payload: Record<string, any> = {
+        [chaveDocumento]: documentoEnvio
+      };
+
+      if (contratoEnvio) {
+        payload.contrato = contratoEnvio;
+      }
+
+      // 5. Chamada à API
       const data = await requireOkJson<UnimedResponse>(API_FATURAS, {
         method: 'POST',
         headers: {
@@ -70,20 +102,24 @@ export const faturasRoute: FastifyPluginAsync = async (fastify) => {
       const content = Array.isArray(data?.content) ? data.content : [];
 
       fastify.log.info({
-        msg: '/api/faturas',
-        tipo: isPj ? 'PJ' : 'PF',
-        payloadEnviado: payload,
-        itens: content.length,
-        tempo: `${Date.now() - started}ms`,
+        msg: 'Busca de faturas realizada',
+        titular: pessoa.nome_titular,
+        buscadoPor: documentoEnvio,
+        status: 'Sucesso'
       });
 
-      return { content };
+      return { 
+        content,
+        info: { 
+          nome: pessoa.nome_titular, 
+          tipo: pessoa.tipo_plano,
+          empresa: pessoa.nome_empresa || 'PLANO PF'
+        } 
+      };
+
     } catch (error) {
       fastify.log.error(error);
-      return reply.code(502).send({
-        error: 'Erro na busca',
-        message: 'Não foi possível buscar as faturas. Verifique se o número do contrato está correto.',
-      });
+      return reply.code(500).send({ error: 'Erro ao processar validação.' });
     }
   });
 };
