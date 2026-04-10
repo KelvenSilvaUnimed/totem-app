@@ -715,23 +715,51 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     textAlign: 'center',
     marginBottom: 12,
+    fontWeight: '700'
+  },
+  rfAjudaIconWrap: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  rfAjudaMensagem: {
+    color: palette.grayText,
+    fontSize: 26,
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 36,
+    marginBottom: 8,
+    paddingHorizontal: 12,
+    maxWidth: 560,
+    alignSelf: 'center',
   },
   pjNascimentoInfo: {
     color: palette.grayText,
     fontSize: 26,
     fontStyle: 'italic',
     textAlign: 'center',
-    marginTop: 22,
+    marginTop: 35,
     marginBottom: 38,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   pjNascimentoFieldOuter: {
     width: '100%',
     maxWidth: 440,
     position: 'relative',
     alignSelf: 'center',
-    marginBottom: 28,
+    marginBottom: 8,
     zIndex: 2,
+  },
+  /** Form PF (data nascimento): menos espaço até o botão BUSCAR FATURAS. */
+  formContainerPfData: {
+    width: '100%',
+    paddingHorizontal: 32,
+    marginBottom: 8,
+    position: 'relative',
+    zIndex: 5,
+    elevation: 5,
+  },
+  buttonRowTightTop: {
+    marginTop: 6,
   },
   greenButton: {
     backgroundColor: palette.greenDark,
@@ -740,6 +768,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 48,
     minWidth: 400,
     alignItems: 'center',
+    justifyContent: 'center',
     ...shadow('0 6px 12px rgba(0,0,0,0.25)', {
       color: '#000',
       offset: { width: 0, height: 6 },
@@ -747,6 +776,12 @@ const styles = StyleSheet.create({
       radius: 12,
       elevation: 8,
     }),
+  },
+  greenButtonIconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
   },
   greenButtonText: {
     color: palette.white,
