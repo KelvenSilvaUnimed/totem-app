@@ -768,6 +768,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 48,
     minWidth: 400,
     alignItems: 'center',
+    justifyContent: 'center',
     ...shadow('0 6px 12px rgba(0,0,0,0.25)', {
       color: '#000',
       offset: { width: 0, height: 6 },
@@ -775,6 +776,12 @@ const styles = StyleSheet.create({
       radius: 12,
       elevation: 8,
     }),
+  },
+  greenButtonIconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
   },
   greenButtonText: {
     color: palette.white,

@@ -706,8 +706,7 @@ export default function TotemHomeScreen() {
               <Ionicons name="document-text-outline" size={36} color={palette.greenDark} />
               <TextInput
                 style={styles.totemFieldTextInput}
-                placeholder="Digite o número do contrato"
-                placeholderTextColor="#9ca3af"
+                accessibilityLabel="Número do contrato"
                 value={contratoPJ}
                 onChangeText={setContratoPJ}
                 keyboardType="numeric"
@@ -755,7 +754,7 @@ export default function TotemHomeScreen() {
           <Text style={{ fontWeight: '700', color: palette.greenDark }}>{nome}</Text>?
         </Text>
         <Text style={[styles.pjNextStep, { marginTop: 20 }]}>
-          Confira se o nome está correto e clique em continuar para buscar suas faturas.
+          Confira se o nome está correto e clique em confirmar para buscar suas faturas.
         </Text>
         <View style={[styles.cpfButtonRow, isTablet && styles.cpfButtonRowTablet]}>
           <TouchableOpacity
@@ -766,11 +765,16 @@ export default function TotemHomeScreen() {
             <Text style={styles.cancelButtonText}>Responsável incorreto?</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.greenButton, loading && styles.buttonDisabled]}
+            style={[
+              styles.greenButton,
+              styles.greenButtonIconRow,
+              loading && styles.buttonDisabled,
+            ]}
             onPress={handleContinuarRespFinanceiro}
             disabled={loading}
           >
-            <Text style={styles.greenButtonText}>CONTINUAR</Text>
+            <Ionicons name="checkmark-circle-outline" size={30} color={palette.white} />
+            <Text style={styles.greenButtonText}>CONFIRMAR</Text>
           </TouchableOpacity>
         </View>
       </View>
