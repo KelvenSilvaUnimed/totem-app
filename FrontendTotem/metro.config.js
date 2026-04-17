@@ -2,12 +2,21 @@ const path = require('path');
 const { getDefaultConfig } = require('expo/metro-config');
 
 const config = getDefaultConfig(__dirname);
+const workspaceRoot = path.resolve(__dirname, '..');
+const resolveFromWorkspace = (moduleName) =>
+  require.resolve(moduleName, { paths: [__dirname, workspaceRoot] });
+
+config.watchFolders = [...(config.watchFolders || []), workspaceRoot];
+config.resolver.nodeModulesPaths = [
+  path.resolve(__dirname, 'node_modules'),
+  path.resolve(workspaceRoot, 'node_modules'),
+];
 
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   if (moduleName === 'axios') {
     return {
       type: 'sourceFile',
-      filePath: path.resolve(__dirname, 'node_modules/axios/dist/browser/axios.cjs'),
+      filePath: resolveFromWorkspace('axios/dist/browser/axios.cjs'),
     };
   }
 
