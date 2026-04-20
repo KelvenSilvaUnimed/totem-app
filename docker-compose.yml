@@ -8,29 +8,48 @@ services:
     ports:
       - "${BACKEND_PORT:-3000}:3000"
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"]
       interval: 10s
-      timeout: 3s
+      timeout: 5s
       retries: 5
       start_period: 10s
     restart: unless-stopped
     networks:
       - totem-net
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   frontend:
     build:
       context: ./FrontendTotem
       dockerfile: Dockerfile
       args:
-        EXPO_PUBLIC_API_BASE_URL: "${EXPO_PUBLIC_API_BASE_URL:-}"
+        EXPO_PUBLIC_API_BASE_URL: "${EXPO_PUBLIC_API_BASE_URL:-/api}"
         EXPO_PUBLIC_API_PREFIX: "${EXPO_PUBLIC_API_PREFIX:-}"
     ports:
       - "${FRONTEND_PORT:-8081}:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - totem-net
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   totem-net:

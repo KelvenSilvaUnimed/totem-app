@@ -1,10 +1,36 @@
-import { Platform, StyleSheet } from 'react-native';
+import { Dimensions, StyleSheet, Platform } from 'react-native';
+
+// Função segura para obter a largura da tela, inclusive em ambientes SSR/Node.js
+const getScreenWidth = () => {
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth || 1920;
+    }
+    // Fallback para SSR
+    return 1920;
+  }
+  try {
+    return Dimensions.get('window').width || 1920;
+  } catch (e) {
+    return 1920;
+  }
+};
+
+const SCREEN_WIDTH = getScreenWidth();
+
+// Baseado em Full HD (1920px de largura)
+export const scale = (size: number) => (SCREEN_WIDTH / 1920) * size;
+// Helper para valores que devem ter um mínimo e máximo
+export const responsive = (size: number, min: number, max: number) => {
+  const result = scale(size);
+  return Math.min(Math.max(result, min), max);
+};
 
 export const palette = {
-  background: '#0f172a',
-  card: '#111827',
+  background: '#ffffff',
+  card: 'transparent',
   muted: '#94a3b8',
-  primary: '#38bdf8',
+  primary: '#0ea5e9',
   primaryStrong: '#0ea5e9',
   secondary: '#1f2937',
   accent: '#f59e0b',
@@ -36,9 +62,8 @@ const shadow = (
       shadowRadius: native.radius,
       ...(native.elevation ? { elevation: native.elevation } : {}),
     },
-  });
+  }) as any;
 
-// Estilos otimizados para TABLET
 const styles = StyleSheet.create({
   screenRoot: {
     flex: 1,
@@ -49,16 +74,17 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     left: 0,
-    zIndex: 0,
+    zIndex: -1,
   },
   backgroundLayerFixed: {
-    // RN (native) não aceita 'fixed'; no web queremos fundo travado.
-    position: (Platform.OS === 'web' ? ('fixed' as any) : 'absolute') as any,
+    // Mantemos absolute pois o container principal (screenRoot) já tem overflow hidden e o ScrollView é interno.
+    position: 'absolute' as any,
   },
   safeArea: {
     flex: 1,
+    position: 'relative',
     backgroundColor: 'transparent',
-    zIndex: 1,
+    zIndex: 10,
   },
   scrollContent: {
     padding: 40,
@@ -372,176 +398,94 @@ const styles = StyleSheet.create({
   /** Tela inicial — emissão 2ª via (layout tipo totem Unimed) */
   homeScreenRoot: {
     width: '100%',
-    maxWidth: 580,
+    maxWidth: responsive(800, 480, 1200), // Aumentado para preencher melhor o HD
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingVertical: scale(20),
+    paddingHorizontal: scale(32),
   },
   homeReceiptIconWrap: {
-    marginBottom: 22,
+    marginBottom: scale(30),
     alignItems: 'center',
     justifyContent: 'center',
   },
   homeEmissaoTitle: {
     color: palette.greenDark,
-    fontSize: 30,
+    fontSize: responsive(48, 24, 60),
     fontWeight: '800',
-    letterSpacing: 0.8,
+    letterSpacing: 1.2,
     textAlign: 'center',
     textTransform: 'uppercase',
-    marginBottom: 44,
-    lineHeight: 38,
-    paddingHorizontal: 8,
+    marginBottom: scale(60),
+    lineHeight: responsive(56, 30, 70),
+    paddingHorizontal: scale(16),
   },
   homeBemVindo: {
     color: '#1a1a1a',
-    fontSize: 36,
+    fontSize: responsive(52, 28, 64),
     fontWeight: '700',
     textAlign: 'center',
-    marginBottom: 10,
+    marginBottom: scale(14),
   },
   homeInstrucaoCpf: {
     color: '#333333',
-    fontSize: 26,
+    fontSize: responsive(32, 18, 40),
     fontWeight: '700',
     textAlign: 'center',
-    marginBottom: 28,
+    marginBottom: scale(40),
   },
-  homeCpfFieldOuter: {
-    width: '100%',
-    maxWidth: 520,
-    position: 'relative',
-    marginBottom: 28,
-    zIndex: 2,
-  },
-  homeCpfFloatingLabel: {
-    position: 'absolute',
-    top: -14,
-    left: 16,
-    zIndex: 10,
-    /** Cobre a borda verde atrás do texto (evita “riscar” o rótulo com fundo transparente). */
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 12,
-    paddingVertical: 2,
-    color: palette.greenDark,
-    fontSize: 21,
-    fontWeight: '600',
-  },
-  homeCpfFieldBorder: {
-    borderWidth: 2,
-    borderColor: palette.greenDark,
-    borderRadius: 18,
-    backgroundColor: 'transparent',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingLeft: 16,
-    paddingRight: 20,
-    paddingVertical: 18,
-    minHeight: 76,
-    ...Platform.select({
-      web: { overflow: 'visible' as const },
-      default: {},
-    }),
-  },
-  homeCpfTextInput: {
-    flex: 1,
-    fontSize: 34,
-    fontWeight: '600',
-    color: '#333333',
-    backgroundColor: 'transparent',
-    paddingVertical: 4,
-    paddingLeft: 10,
-    borderWidth: 0,
-    ...Platform.select({
-      web: {
-        outlineStyle: 'none' as const,
-        outlineWidth: 0,
-        outlineColor: 'transparent',
-        boxShadow: 'none',
-      },
-      default: {},
-    }),
-  },
-
-  /** Campo padrão (mesmo visual do CPF inicial), reutilizável. */
   totemFieldOuter: {
     width: '100%',
-    maxWidth: 520,
+    maxWidth: scale(700),
     position: 'relative',
     alignSelf: 'center',
-    marginBottom: 28,
+    marginBottom: scale(40),
     zIndex: 2,
   },
-  totemFieldFloatingLabel: {
-    position: 'absolute',
-    top: -14,
-    left: 16,
-    zIndex: 10,
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 12,
-    paddingVertical: 2,
-    color: palette.greenDark,
-    fontSize: 21,
-    fontWeight: '600',
-  },
   totemFieldBorder: {
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: palette.greenDark,
-    borderRadius: 18,
-    backgroundColor: 'transparent',
+    borderRadius: scale(24),
+    backgroundColor: 'rgba(255,255,255,0.8)',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: 16,
-    paddingRight: 20,
-    paddingVertical: 18,
-    minHeight: 76,
-    ...Platform.select({
-      web: { overflow: 'visible' as const },
-      default: {},
-    }),
+    paddingLeft: scale(24),
+    paddingRight: scale(28),
+    paddingVertical: scale(24),
+    minHeight: scale(100),
   },
   totemFieldTextInput: {
     flex: 1,
-    fontSize: 34,
+    fontSize: responsive(48, 24, 56),
     fontWeight: '600',
     color: '#333333',
     backgroundColor: 'transparent',
-    paddingVertical: 4,
-    paddingLeft: 10,
+    paddingVertical: scale(8),
+    paddingLeft: scale(16),
     borderWidth: 0,
-    ...Platform.select({
-      web: {
-        outlineStyle: 'none' as const,
-        outlineWidth: 0,
-        outlineColor: 'transparent',
-        boxShadow: 'none',
-      },
-      default: {},
-    }),
   },
   homeConfirmButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 16,
+    gap: scale(20),
     backgroundColor: palette.orange,
-    borderRadius: 40,
-    paddingVertical: 22,
-    paddingHorizontal: 52,
-    minWidth: 340,
-    ...shadow('0 6px 14px rgba(0,0,0,0.2)', {
+    borderRadius: scale(60),
+    paddingVertical: scale(32),
+    paddingHorizontal: scale(80),
+    minWidth: scale(450),
+    ...shadow('0 10px 20px rgba(0,0,0,0.25)', {
       color: '#000',
-      offset: { width: 0, height: 6 },
-      opacity: 0.2,
-      radius: 12,
-      elevation: 8,
+      offset: { width: 0, height: 10 },
+      opacity: 0.25,
+      radius: 15,
+      elevation: 10,
     }),
   },
   homeConfirmButtonText: {
     color: '#ffffff',
     fontWeight: '800',
-    fontSize: 28,
-    letterSpacing: 1.2,
+    fontSize: responsive(36, 20, 44),
+    letterSpacing: 2,
   },
   homeConfirmCheckCircle: {
     width: 44,
@@ -887,64 +831,54 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     height: '100%',
-    minHeight: '100%',
   },
   topLeftImage: {
     position: 'absolute',
-    top: 0,
-    left: '6%',
-    width: '35%',
-    height: 200,
-    zIndex: 2,
+    top: scale(-50),
+    left: scale(-20),
+    width: scale(600),
+    height: scale(400),
+    zIndex: 1,
   },
   topLeftImageTablet: {
-    left: '1%',
-    width: '41%',
-    height: '30%',
-    top: '-10.4%'
+    width: scale(800),
+    height: scale(500),
   },
   topRightImage: {
     position: 'absolute',
-    top: 0,
-    right: '-6%',
-    width: '35%',
-    height: 200,
-    zIndex: 2,
+    top: scale(-30),
+    right: scale(-40),
+    width: scale(600),
+    height: scale(400),
+    zIndex: 1,
   },
   topRightImageTablet: {
-    right: '-6%',
-    width: '42%',
-    height: '25%',
-    top: '-5%'
+    width: scale(800),
+    height: scale(500),
   },
   bottomLeftImage: {
     position: 'absolute',
-    bottom: 0,
-    left: '-10%',
-    width: '50%',
-    height: '70%',
-    zIndex: 2,
+    bottom: scale(-50),
+    left: scale(-60),
+    width: scale(900),
+    height: scale(600),
+    zIndex: 1,
   },
   bottomLeftImageTablet: {
-    left: '-1%',
-    width: '55%',
-    height: '70%',
-    bottom: '-16%',
-    zIndex: 1,
+    width: scale(1100),
+    height: scale(800),
   },
   bottomRightImage: {
     position: 'absolute',
-    bottom: 0,
-    right: '-8%',
-    width: '45%',
-    height: '70%',
-    zIndex: 2,
+    bottom: scale(-40),
+    right: scale(-20),
+    width: scale(500),
+    height: scale(700),
+    zIndex: 1,
   },
   bottomRightImageTablet: {
-    bottom: '-11%',
-    right: '1%',
-    width: '31%',
-    height: '75%',
+    width: scale(600),
+    height: scale(800),
   },
   decorImageFill: {
     width: '100%',
@@ -952,21 +886,20 @@ const styles = StyleSheet.create({
   },
   atendenteContainer: {
     position: 'absolute',
-    bottom: '-1.5%',
-    left: 0,
-    zIndex: 2,
+    bottom: scale(-20),
+    left: scale(40),
+    zIndex: 5,
   },
   atendenteContainerTablet: {
-    bottom: '-15.5%',
-    left: '6.2%',
-    zIndex: 1,
+    left: '8%',
+    bottom: scale(-40),
   },
   atendenteImage: {
     zIndex: 1,
   },
   atendenteImageTablet: {
     zIndex: 1,
-    transform: [{ scale: 1.28 }],
+    transform: [{ scale: 1.1 }],
   },
 });
 

@@ -11,6 +11,7 @@ import { faturasRoute } from './routes/faturas.route.js';
 import { healthRoute } from './routes/health.route.js';
 import { identificacaoRoute } from './routes/identificacao.route.js';
 import { pdfRoute } from './routes/pdf.route.js';
+import loggingPlugin from './plugins/logging.plugin.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,6 +22,7 @@ async function build() {
   await app.register(corsPlugin);
   await app.register(securityPlugin);
   await app.register(mailerPlugin);
+  await app.register(loggingPlugin);
 
   const isAllowedOrigin = (origin?: string) => {
     if (!origin) return false;
