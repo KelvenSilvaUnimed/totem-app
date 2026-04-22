@@ -71,12 +71,12 @@ export default function ValidacaoStep({
         </Text>
       ) : null}
 
-      <Text style={[styles.pjNascimentoInfo, { marginBottom: 20 }]}>
+      <Text style={[styles.pjNascimentoInfo, { marginTop: nomeEmpresaDoLookup ? 10 : 35, marginBottom: 20 }]}>
         {isPJ ? 'Informe o número do contrato para continuar' : 'Para continuar, informe a data de nascimento do titular'}
       </Text>
 
       <View style={[isPJ ? styles.formContainer : styles.formContainerPfData, isTablet && styles.formContainerTablet]}>
-        <View style={isPJ ? styles.totemFieldOuter : styles.pjNascimentoFieldOuter}>
+        <View style={isPJ ? styles.totemFieldOuterTight : styles.pjNascimentoFieldOuter}>
           <View style={styles.totemFieldBorder}>
             <Ionicons name={isPJ ? 'document-text-outline' : 'calendar-outline'} size={36} color={palette.greenDark} />
             <TextInput

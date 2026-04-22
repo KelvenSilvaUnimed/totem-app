@@ -78,7 +78,12 @@ export default function TotemHomeScreen() {
               styles.scrollContent,
               isTablet && styles.scrollContentTablet,
               keyboardHeight > 0 && { paddingBottom: keyboardHeight + 24 },
-              isFormFocused && { paddingBottom: Math.max(keyboardHeight, 420) },
+              isFormFocused && {
+                paddingBottom: Math.max(
+                  keyboardHeight,
+                  ctrl.step === 'cpf' || (ctrl.step === 'validacao' && ctrl.isPessoaJuridica) ? 20 : 420,
+                ),
+              },
             ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
@@ -92,6 +97,8 @@ export default function TotemHomeScreen() {
                 setCpf={ctrl.setCpf}
                 loading={ctrl.loading}
                 onConfirmar={ctrl.handleLookup}
+                scrollRef={scrollRef}
+                setIsFormFocused={setIsFormFocused}
               />
             )}
 
@@ -105,9 +112,6 @@ export default function TotemHomeScreen() {
                   isTablet={isTablet}
                   loading={ctrl.loading}
                   nomeEmpresaDoLookup={ctrl.nomeEmpresaDoLookup}
-                  scrollRef={scrollRef}
-                  isFormFocusedRef={isFormFocusedRef}
-                  setIsFormFocused={setIsFormFocused}
                   onConfirmar={ctrl.handleConfirmarValidacao}
                   onReset={ctrl.resetarFluxo}
                 />
