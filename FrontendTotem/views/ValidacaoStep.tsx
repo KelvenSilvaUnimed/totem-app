@@ -77,7 +77,7 @@ export default function ValidacaoStep({
 
       <View style={[isPJ ? styles.formContainer : styles.formContainerPfData, isTablet && styles.formContainerTablet]}>
         <View style={isPJ ? styles.totemFieldOuterTight : styles.pjNascimentoFieldOuter}>
-          <View style={styles.totemFieldBorder}>
+          <View style={isPJ ? styles.totemFieldBorder : styles.totemFieldBorderCompact}>
             <Ionicons name={isPJ ? 'document-text-outline' : 'calendar-outline'} size={36} color={palette.greenDark} />
             <TextInput
               style={[styles.totemFieldTextInput, { pointerEvents: 'none' }]}
@@ -91,7 +91,8 @@ export default function ValidacaoStep({
         </View>
       </View>
 
-      <VirtualKeypad 
+      <VirtualKeypad
+        marginTop={isPJ ? 12 : 30}
         onPress={handleKeyPress}
         onClear={handleClear}
         onDelete={handleDelete}
@@ -99,7 +100,7 @@ export default function ValidacaoStep({
 
       <View style={[styles.cpfButtonRow, isTablet && styles.cpfButtonRowTablet, { marginTop: scale(40) }]}>
         <TouchableOpacity style={styles.cancelButton} onPress={onReset} disabled={loading}>
-          <Text style={styles.cancelButtonText}>Digitar outro CPF</Text>
+          <Text style={styles.cancelButtonText}>Voltar</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.greenButton, loading && styles.buttonDisabled]} onPress={onConfirmar} disabled={loading}>
           <Text style={styles.greenButtonText}>BUSCAR FATURAS</Text>

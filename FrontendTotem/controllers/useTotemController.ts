@@ -169,13 +169,21 @@ export function useTotemController(): TotemController {
     setLoading(true);
     setStatus(null);
     try {
-      const { faturas: lista } = await buscarFaturas(cpfCnpj, segundoParam, opts, cpfResp);
+      const cnpjPJ =
+        getTipoPessoa(beneficiario) === 'PJ' && opts?.segundoCampo === 'contrato'
+          ? beneficiario?.cnpj_caepf_empresa
+          : undefined;
+      const { faturas: lista } = await buscarFaturas(cpfCnpj, segundoParam, opts, cpfResp, cnpjPJ);
+      // Lista vazia não indica contrato inválido: pode não haver faturas em aberto. O backend valida contrato/CNPJ quando possível.
       if (getTipoPessoa(beneficiario) === 'PJ' && opts?.segundoCampo === 'contrato' && lista.length === 0) {
         setFaturas([]);
         setSelectedFatura(null);
         setBoletoAtual(null);
-        setStep('validacao');
-        setStatusMessage('warn', 'Número do contrato está incorreto.');
+        setStep('faturas');
+        setStatusMessage(
+          'warn',
+          'Não encontramos faturas em aberto para estes dados.',
+        );
         return;
       }
       setFaturas(lista);

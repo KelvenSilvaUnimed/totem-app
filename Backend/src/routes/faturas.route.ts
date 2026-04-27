@@ -10,6 +10,8 @@ const API_FATURAS =
 interface FaturasBody {
   /** CPF (PF) ou CPF do titular (PJ) */
   cpfCnpj?: string;
+  /** CNPJ da empresa (PJ) — opcional; o backend prefere o CNPJ vindo do cadastro do titular */
+  cnpj?: string;
   /** Número do contrato (PJ) */
   contrato?: string;
   /** Data de nascimento do titular em 8 dígitos DDMMAAAA (PF sem resp. financeiro) */
@@ -24,7 +26,7 @@ interface UnimedFaturasResponse {
 
 export const faturasRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{ Body: FaturasBody }>('/api/faturas', async (request, reply) => {
-    const { cpfCnpj, contrato, data_nascimento_titular, cpf_resp_financeiro } = request.body || {};
+    const { cpfCnpj, cnpj, contrato, data_nascimento_titular, cpf_resp_financeiro } = request.body || {};
 
     const cpfCnpjDigits = onlyDigits(cpfCnpj || '');
     const contratoDigits = onlyDigits(contrato || '');
@@ -54,9 +56,41 @@ export const faturasRoute: FastifyPluginAsync = async (fastify) => {
           return reply.code(400).send({ error: 'Número do contrato é obrigatório para pessoa jurídica.' });
         }
 
+        const cnpjCadastro = onlyDigits(pessoa.cnpj_caepf_empresa || '');
+        const cnpjInformado = onlyDigits(cnpj || '');
+        if (cnpjCadastro && cnpjInformado && cnpjInformado !== cnpjCadastro) {
+          return reply.code(400).send({ error: 'CNPJ informado não confere com o cadastro do titular.' });
+        }
+        const cnpjEnvio = cnpjCadastro || cnpjInformado;
+
+        // Responsável financeiro (PJ): exige CPF do pagador quando o cadastro traz o CPF esperado
+        if (possuiResp && temNomeResp && cpfRespNoBanco) {
+          if (!cpfRespDigitado) {
+            return reply.code(400).send({
+              step: 'NEED_CPF_RESP',
+              nome_resp_financeiro: pessoa.nome_resp_financeiro,
+              message: 'Este plano possui responsável financeiro. Informe o CPF do pagador.',
+            });
+          }
+          if (cpfRespDigitado !== cpfRespNoBanco) {
+            return reply.code(401).send({
+              error: 'Acesso negado.',
+              message: 'O CPF do responsável informado não confere com o cadastro.',
+            });
+          }
+        }
+
         // Busca as faturas usando o CPF do titular e o contrato informado
         const token = await getToken();
-        const payload = { cpf: cpfCnpjDigits, contrato: contratoDigits };
+        const payload: Record<string, string> = {
+          cpf: cpfCnpjDigits,
+          cpfCnpj: cpfCnpjDigits,
+          contrato: contratoDigits,
+        };
+        if (cnpjEnvio) payload.cnpj = cnpjEnvio;
+        if (possuiResp && temNomeResp && cpfRespDigitado && cpfRespNoBanco && cpfRespDigitado === cpfRespNoBanco) {
+          payload.cpf_resp_financeiro = cpfRespDigitado;
+        }
 
         const data = await requireOkJson<UnimedFaturasResponse>(API_FATURAS, {
           method: 'POST',

@@ -99,7 +99,8 @@ const styles = StyleSheet.create({
   },
   scrollContentTablet: {
     paddingTop: '1%',
-    paddingBottom: '25%',
+    // '25%' tende a criar muito "vazio" e rolagem extra no totem.
+    paddingBottom: '8%',
   },
   contentWrapper: {
     flex: 1,
@@ -461,6 +462,19 @@ const styles = StyleSheet.create({
     paddingVertical: scale(24),
     minHeight: scale(100),
   },
+  // Versão mais baixa (usada no campo de data PF)
+  totemFieldBorderCompact: {
+    borderWidth: 3,
+    borderColor: palette.greenDark,
+    borderRadius: scale(24),
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: scale(24),
+    paddingRight: scale(28),
+    paddingVertical: scale(14),
+    minHeight: scale(78),
+  },
   totemFieldTextInput: {
     flex: 1,
     fontSize: responsive(48, 24, 56),
@@ -470,6 +484,16 @@ const styles = StyleSheet.create({
     paddingVertical: scale(8),
     paddingLeft: scale(16),
     borderWidth: 0,
+    ...Platform.select({
+      web: {
+        outlineStyle: 'none' as const,
+        outlineWidth: 0,
+        outlineColor: 'transparent',
+        boxShadow: 'none',
+        borderColor: 'transparent',
+      },
+      default: {},
+    }),
   },
   homeConfirmButton: {
     flexDirection: 'row',

@@ -41,6 +41,8 @@ export async function buscarFaturas(
   segundoParam: string,
   opts?: { segundoCampo?: BuscarFaturasSegundoCampo },
   cpfRespFinanceiro?: string,
+  /** CNPJ da empresa (PJ), vindo do lookup — a API Unimed costuma exigir junto ao contrato */
+  cnpjEmpresa?: string,
 ): Promise<BuscarFaturasResult> {
   try {
     const segundoCampo = opts?.segundoCampo ?? 'contrato';
@@ -50,8 +52,11 @@ export async function buscarFaturas(
       body = { cpfCnpj, data_nascimento_titular: segundoParam };
       if (cpfRespFinanceiro) body.cpf_resp_financeiro = cpfRespFinanceiro;
     } else {
-      // contrato (PJ)
+      // contrato (PJ) — CPF do responsável financeiro também é enviado quando o fluxo exige confirmação
       body = { cpfCnpj, contrato: segundoParam };
+      const cnpj = (cnpjEmpresa || '').replace(/\D/g, '');
+      if (cnpj) body.cnpj = cnpj;
+      if (cpfRespFinanceiro) body.cpf_resp_financeiro = cpfRespFinanceiro.replace(/\D/g, '');
     }
 
     const response = await api.post(ENDPOINTS.FATURAS, body);

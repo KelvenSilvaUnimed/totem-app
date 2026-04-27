@@ -6,11 +6,13 @@ interface VirtualKeypadProps {
   onPress: (key: string) => void;
   onClear: () => void;
   onDelete: () => void;
+  /** Espaço acima do teclado (default 30). */
+  marginTop?: number;
 }
 
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'CLR', '0', 'DEL'];
 
-export default function VirtualKeypad({ onPress, onClear, onDelete }: VirtualKeypadProps) {
+export default function VirtualKeypad({ onPress, onClear, onDelete, marginTop = 30 }: VirtualKeypadProps) {
   const handlePress = (key: string) => {
     if (key === 'CLR') {
       onClear();
@@ -22,22 +24,23 @@ export default function VirtualKeypad({ onPress, onClear, onDelete }: VirtualKey
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { marginTop }]}>
       <View style={styles.grid}>
         {KEYS.map((key) => {
-          const isSpecial = key === 'CLR' || key === 'DEL';
+          const isClr = key === 'CLR';
+          const isDel = key === 'DEL';
           return (
             <TouchableOpacity
               key={key}
-              style={[styles.key, isSpecial && styles.specialKey]}
+              style={[styles.key, isClr && styles.specialKey, isDel && styles.delKey]}
               onPress={() => handlePress(key)}
               activeOpacity={0.7}
             >
-              {key === 'DEL' ? (
-                <Ionicons name="backspace-outline" size={32} color="#fff" />
+              {isDel ? (
+                <Ionicons name="backspace-outline" size={28} color="#374151" />
               ) : (
-                <Text style={[styles.keyText, isSpecial && styles.specialKeyText]}>
-                  {key}
+                <Text style={[styles.keyText, isClr && styles.specialKeyText]}>
+                  {isClr ? 'apagar' : key}
                 </Text>
               )}
             </TouchableOpacity>
@@ -51,8 +54,7 @@ export default function VirtualKeypad({ onPress, onClear, onDelete }: VirtualKey
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    maxWidth: 400,
-    marginTop: 30,
+    maxWidth: 360,
     alignSelf: 'center',
     zIndex: 100,
   },
@@ -60,13 +62,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    gap: 12,
+    gap: 10,
   },
   key: {
-    width: 110,
-    height: 80,
+    width: 96,
+    height: 70,
     backgroundColor: '#ffffff',
-    borderRadius: 16,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
@@ -78,15 +80,22 @@ const styles = StyleSheet.create({
   },
   specialKey: {
     backgroundColor: '#e8883a', // palette.orange
-    borderColor: '#e8883a',
+    borderColor: '#c2711b',
+    borderWidth: 2,
+  },
+  delKey: {
+    backgroundColor: '#e5e7eb', // cinza claro
+    borderColor: '#cbd5e1',
+    borderWidth: 2,
   },
   keyText: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '700',
     color: '#2d5016', // palette.greenDark
   },
   specialKeyText: {
     color: '#fff',
-    fontSize: 24,
+    fontSize: 18,
+    textAlign: 'center',
   },
 });

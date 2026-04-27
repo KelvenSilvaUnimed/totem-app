@@ -4,11 +4,18 @@ import {
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
-  ScrollView,
   Text,
   View,
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
+import { Image } from 'react-native';
+import type { ImageStyle } from 'react-native';
 
 import { useTotemController } from '@/controllers/useTotemController';
 import { useViewport } from '@/hooks/use-viewport';
@@ -32,11 +39,34 @@ export default function TotemHomeScreen() {
   const { keyboardHeight, isFormFocused, isFormFocusedRef, scrollRef, setIsFormFocused } = useKeyboard();
   const ctrl = useTotemController();
 
+  const stepOpacity = useSharedValue(1);
+  const stepTranslateX = useSharedValue(0);
+
   // Idle reset disparado pelo layout de inatividade
   useEffect(() => {
     if (params?.idleReset) ctrl.resetarFluxoRef.current();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params?.idleReset]);
+
+  // Evita "foco" persistente entre steps (ex.: keypad virtual não abre teclado nativo),
+  // o que pode deixar um paddingBottom grande e criar scroll/vazio desnecessário.
+  useEffect(() => {
+    setIsFormFocused(false);
+  }, [ctrl.step, setIsFormFocused]);
+
+  // Animação suave ao trocar de etapa (mais confiável que entering/exiting no web).
+  useEffect(() => {
+    stepOpacity.value = 0;
+    stepTranslateX.value = 24;
+    stepOpacity.value = withTiming(1, { duration: 180, easing: Easing.out(Easing.cubic) });
+    stepTranslateX.value = withTiming(0, { duration: 220, easing: Easing.out(Easing.cubic) });
+  }, [ctrl.step, stepOpacity, stepTranslateX]);
+
+  const stepAnimStyle = useAnimatedStyle(() => ({
+    opacity: stepOpacity.value,
+    transform: [{ translateX: stepTranslateX.value }],
+  }));
+
 
   const renderStatus = () => {
     if (!ctrl.status || ctrl.status.type === 'ok') return null;
@@ -72,8 +102,8 @@ export default function TotemHomeScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           enabled={Platform.OS !== 'web'}
         >
-          <ScrollView
-            ref={scrollRef}
+          <Animated.ScrollView
+            ref={scrollRef as any}
             contentContainerStyle={[
               styles.scrollContent,
               isTablet && styles.scrollContentTablet,
@@ -81,99 +111,144 @@ export default function TotemHomeScreen() {
               isFormFocused && {
                 paddingBottom: Math.max(
                   keyboardHeight,
-                  ctrl.step === 'cpf' || (ctrl.step === 'validacao' && ctrl.isPessoaJuridica) ? 20 : 420,
+                  ctrl.step === 'cpf' || (ctrl.step === 'validacao' && ctrl.isPessoaJuridica) ? 20 : 120,
                 ),
               },
             ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            scrollEventThrottle={100}
+            scrollEventThrottle={16}
           >
             {renderStatus()}
 
-            {ctrl.step === 'cpf' && (
-              <CpfStep
-                cpf={ctrl.cpf}
-                setCpf={ctrl.setCpf}
-                loading={ctrl.loading}
-                onConfirmar={ctrl.handleLookup}
-                scrollRef={scrollRef}
-                setIsFormFocused={setIsFormFocused}
-              />
-            )}
-
-            {ctrl.step === 'validacao' && (
-              <View style={isTablet ? styles.welcomeCardTablet : undefined}>
-                <ValidacaoStep
-                  beneficiario={ctrl.beneficiario}
-                  campoComplementar={ctrl.campoComplementar}
-                  setCampoComplementar={ctrl.setCampoComplementar}
-                  isPJ={ctrl.isPessoaJuridica}
-                  isTablet={isTablet}
-                  loading={ctrl.loading}
-                  nomeEmpresaDoLookup={ctrl.nomeEmpresaDoLookup}
-                  onConfirmar={ctrl.handleConfirmarValidacao}
-                  onReset={ctrl.resetarFluxo}
+            {/* Decorações de topo dentro do ScrollView para rolarem junto com o conteúdo */}
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, pointerEvents: 'none' }}>
+              <View
+                style={[
+                  styles.topLeftImage,
+                  isTablet && styles.topLeftImageTablet,
+                  {
+                    top: Platform.OS === 'web' ? -32 : -24,
+                    left: Platform.OS === 'web' ? -20 : -14,
+                    width: Math.min(viewportWidth * 0.32, isTablet ? 520 : 420),
+                    height: Math.min(viewportHeight * 0.22, isTablet ? 320 : 240),
+                    zIndex: 0,
+                  },
+                ]}
+              >
+                <Image
+                  source={require('@/assets/images/top_left.png')}
+                  style={styles.decorImageFill as ImageStyle}
+                  resizeMode="contain"
                 />
               </View>
-            )}
 
-            {ctrl.step === 'resp_financeiro' && (
-              <View style={isTablet ? styles.welcomeCardTablet : undefined}>
-                <RespFinanceiroStep
-                  beneficiario={ctrl.beneficiario}
-                  loading={ctrl.loading}
-                  isTablet={isTablet}
-                  onContinuar={ctrl.handleContinuarRespFinanceiro}
-                  onAjuda={() => ctrl.setStep('resp_financeiro_ajuda')}
+              <View
+                style={[
+                  styles.topRightImage,
+                  isTablet && styles.topRightImageTablet,
+                  {
+                    top: Platform.OS === 'web' ? -30 : -22,
+                    right: Platform.OS === 'web' ? -49 : -40,
+                    width: Math.min(viewportWidth * 0.30, isTablet ? 520 : 420),
+                    height: Math.min(viewportHeight * 0.22, isTablet ? 340 : 260),
+                    zIndex: 0,
+                  },
+                ]}
+              >
+                <Image
+                  source={require('@/assets/images/top_right.png')}
+                  style={styles.decorImageFill as ImageStyle}
+                  resizeMode="contain"
                 />
               </View>
-            )}
+            </View>
 
-            {ctrl.step === 'resp_financeiro_ajuda' && (
-              <View style={isTablet ? styles.welcomeCardTablet : undefined}>
-                <RespFinanceiroAjudaStep
-                  loading={ctrl.loading}
-                  onEncerrar={ctrl.handleEncerrarAtendimento}
-                />
-              </View>
-            )}
+            <Animated.View style={[{ width: '100%' }, stepAnimStyle]}>
+                {ctrl.step === 'cpf' && (
+                  <CpfStep
+                    cpf={ctrl.cpf}
+                    setCpf={ctrl.setCpf}
+                    loading={ctrl.loading}
+                    onConfirmar={ctrl.handleLookup}
+                    scrollRef={scrollRef}
+                    setIsFormFocused={setIsFormFocused}
+                  />
+                )}
 
-            {ctrl.step === 'cpf_resp_financeiro' && (
-              <View style={isTablet ? styles.welcomeCardTablet : undefined}>
-                <CpfRespFinanceiroStep
-                  nomeRespFinanceiro={ctrl.beneficiario?.nome_resp_financeiro || ''}
-                  cpfRespFinanceiro={ctrl.cpfRespFinanceiro}
-                  setCpfRespFinanceiro={ctrl.setCpfRespFinanceiro}
-                  loading={ctrl.loading}
-                  isTablet={isTablet}
-                  scrollRef={scrollRef}
-                  isFormFocusedRef={isFormFocusedRef}
-                  setIsFormFocused={setIsFormFocused}
-                  onConfirmar={ctrl.handleConfirmarCpfRespFinanceiro}
-                  onVoltar={() => ctrl.setStep('resp_financeiro')}
-                />
-              </View>
-            )}
+                {ctrl.step === 'validacao' && (
+                  <View style={isTablet ? styles.welcomeCardTablet : undefined}>
+                    <ValidacaoStep
+                      beneficiario={ctrl.beneficiario}
+                      campoComplementar={ctrl.campoComplementar}
+                      setCampoComplementar={ctrl.setCampoComplementar}
+                      isPJ={ctrl.isPessoaJuridica}
+                      isTablet={isTablet}
+                      loading={ctrl.loading}
+                      nomeEmpresaDoLookup={ctrl.nomeEmpresaDoLookup}
+                      onConfirmar={ctrl.handleConfirmarValidacao}
+                      onReset={ctrl.resetarFluxo}
+                    />
+                  </View>
+                )}
 
-            {ctrl.step === 'faturas' && (
-              <View style={isTablet ? styles.welcomeCardTablet : undefined}>
-                <FaturasStep
-                  faturas={ctrl.faturas}
-                  selectedFatura={ctrl.selectedFatura}
-                  loading={ctrl.loading}
-                  isTablet={isTablet}
-                  resumo={ctrl.resumoFaturas}
-                  getNumeroFatura={ctrl.getNumeroFatura}
-                  formatarValorFatura={ctrl.formatarValorFatura}
-                  formatarDataFatura={ctrl.formatarDataFatura}
-                  onVisualizar={ctrl.handleVisualizarLinha}
-                  onImprimir={ctrl.handleImprimirLinha}
-                  onVoltar={ctrl.handleVoltarParaValidacao}
-                  onReset={ctrl.resetarFluxo}
-                />
-              </View>
-            )}
+                {ctrl.step === 'resp_financeiro' && (
+                  <View style={isTablet ? styles.welcomeCardTablet : undefined}>
+                    <RespFinanceiroStep
+                      beneficiario={ctrl.beneficiario}
+                      loading={ctrl.loading}
+                      isTablet={isTablet}
+                      onContinuar={ctrl.handleContinuarRespFinanceiro}
+                      onAjuda={() => ctrl.setStep('resp_financeiro_ajuda')}
+                    />
+                  </View>
+                )}
+
+                {ctrl.step === 'resp_financeiro_ajuda' && (
+                  <View style={isTablet ? styles.welcomeCardTablet : undefined}>
+                    <RespFinanceiroAjudaStep
+                      loading={ctrl.loading}
+                      onEncerrar={ctrl.handleEncerrarAtendimento}
+                    />
+                  </View>
+                )}
+
+                {ctrl.step === 'cpf_resp_financeiro' && (
+                  <View style={isTablet ? styles.welcomeCardTablet : undefined}>
+                    <CpfRespFinanceiroStep
+                      nomeRespFinanceiro={ctrl.beneficiario?.nome_resp_financeiro || ''}
+                      cpfRespFinanceiro={ctrl.cpfRespFinanceiro}
+                      setCpfRespFinanceiro={ctrl.setCpfRespFinanceiro}
+                      loading={ctrl.loading}
+                      isTablet={isTablet}
+                      scrollRef={scrollRef}
+                      isFormFocusedRef={isFormFocusedRef}
+                      setIsFormFocused={setIsFormFocused}
+                      onConfirmar={ctrl.handleConfirmarCpfRespFinanceiro}
+                      onVoltar={() => ctrl.setStep('resp_financeiro')}
+                    />
+                  </View>
+                )}
+
+                {ctrl.step === 'faturas' && (
+                  <View style={isTablet ? styles.welcomeCardTablet : undefined}>
+                    <FaturasStep
+                      faturas={ctrl.faturas}
+                      selectedFatura={ctrl.selectedFatura}
+                      loading={ctrl.loading}
+                      isTablet={isTablet}
+                      resumo={ctrl.resumoFaturas}
+                      getNumeroFatura={ctrl.getNumeroFatura}
+                      formatarValorFatura={ctrl.formatarValorFatura}
+                      formatarDataFatura={ctrl.formatarDataFatura}
+                      onVisualizar={ctrl.handleVisualizarLinha}
+                      onImprimir={ctrl.handleImprimirLinha}
+                      onVoltar={ctrl.handleVoltarParaValidacao}
+                      onReset={ctrl.resetarFluxo}
+                    />
+                  </View>
+                )}
+            </Animated.View>
 
             {ctrl.loading && (
               <View style={styles.loading}>
@@ -185,7 +260,7 @@ export default function TotemHomeScreen() {
                 <ActivityIndicator color={palette.primary} style={{ marginLeft: 8 }} />
               </View>
             )}
-          </ScrollView>
+          </Animated.ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
 

@@ -84,7 +84,13 @@ export async function consultarPessoaPorDocumento(
       nome_titular: selected?.nome_titular || selected?.nome || selected?.nome_pessoa,
       cpf_titular: selected?.cpf_titular || selected?.cpf || documento,
       tipo_plano: selected?.tipo_plano || selected?.tip_pessoa,
-      registro_ans: selected?.registro_ans?.trim?.() || selected?.contrato,
+      registro_ans:
+        selected?.registro_ans?.trim?.() ||
+        selected?.contrato ||
+        selected?.numero_contrato ||
+        selected?.nr_contrato ||
+        selected?.cod_contrato ||
+        selected?.contrato_empresa,
       codigo_pessoa_titular: selected?.codigo_pessoa_titular || selected?.codigo_pessoa || selected?.cod_pessoa,
       data_nascimento_titular: selected?.data_nascimento_titular || selected?.data_nascimento || selected?.dt_nasc,
       codigo_resp_financeiro: selected?.codigo_resp_financeiro ?? '',
@@ -99,7 +105,13 @@ export async function consultarPessoaPorDocumento(
         selected?.nome_fantasia ||
         selected?.nomeFantasia ||
         '',
-      cnpj_caepf_empresa: selected?.cnpj_caepf_empresa ?? '',
+      cnpj_caepf_empresa:
+        selected?.cnpj_caepf_empresa ??
+        selected?.cnpj ??
+        selected?.cnpj_empresa ??
+        selected?.cnpjEmpresa ??
+        selected?.nr_cnpj ??
+        '',
     };
   };
 

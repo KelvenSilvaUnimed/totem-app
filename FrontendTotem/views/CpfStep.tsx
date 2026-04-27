@@ -1,7 +1,7 @@
-import { Platform, TextInput, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Platform, TextInput, Text, TouchableOpacity, View } from 'react-native';
 import type { ScrollView } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import styles, { palette, scale } from '@/styles/totem.styles';
+import styles, { palette } from '@/styles/totem.styles';
 import { formatCpfInput } from '@/services/utils.service';
 import VirtualKeypad from '@/components/ui/virtual-keypad';
 import FluidContainer from '@/components/ui/fluid-container';
@@ -86,12 +86,19 @@ export default function CpfStep({ cpf, setCpf, loading, onConfirmar, scrollRef, 
             <View style={styles.totemFieldBorder}>
               <Ionicons name="document-text-outline" size={36} color={palette.greenDark} />
               <TextInput
-                style={styles.totemFieldTextInput}
+                style={[styles.totemFieldTextInput, { pointerEvents: 'none' }]}
                 placeholder="000.000.000-00"
                 placeholderTextColor="#9ca3af"
                 value={cpf}
                 editable={false} // Impede o teclado do sistema no Web/Nativo
               />
+              {loading ? (
+                <ActivityIndicator
+                  size="large"
+                  color={palette.orange}
+                  style={{ marginLeft: -38, marginRight: 58 }}
+                />
+              ) : null}
             </View>
           </TouchableOpacity>
         </View>
@@ -104,20 +111,7 @@ export default function CpfStep({ cpf, setCpf, loading, onConfirmar, scrollRef, 
           />
         ) : null}
 
-        {showKeypad ? (
-          <TouchableOpacity
-            style={[
-              styles.homeConfirmButton,
-              loading && styles.buttonDisabled,
-              { marginTop: scale(18) },
-            ]}
-            onPress={onConfirmar}
-            disabled={loading}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.homeConfirmButtonText}>CONFIRMAR</Text>
-          </TouchableOpacity>
-        ) : null}
+        {/* Confirma automaticamente ao completar 11 dígitos */}
       </View>
     </FluidContainer>
   );
