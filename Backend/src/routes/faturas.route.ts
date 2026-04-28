@@ -8,15 +8,10 @@ const API_FATURAS =
   'https://api.unimedpatos.sgusuite.com.br/api/procedure/p_prcssa_dados/0177_busca_dados_fatura_aberto';
 
 interface FaturasBody {
-  /** CPF (PF) ou CPF do titular (PJ) */
   cpfCnpj?: string;
-  /** CNPJ da empresa (PJ) — opcional; o backend prefere o CNPJ vindo do cadastro do titular */
   cnpj?: string;
-  /** Número do contrato (PJ) */
   contrato?: string;
-  /** Data de nascimento do titular em 8 dígitos DDMMAAAA (PF sem resp. financeiro) */
   data_nascimento_titular?: string;
-  /** CPF do responsável financeiro (PF com resp. financeiro) */
   cpf_resp_financeiro?: string;
 }
 
@@ -38,7 +33,6 @@ export const faturasRoute: FastifyPluginAsync = async (fastify) => {
     }
 
     try {
-      // 1. Busca o cadastro pelo CPF/CNPJ do titular
       const pessoa = await consultarPessoaPorDocumento(cpfCnpjDigits);
 
       if (!pessoa) {
@@ -50,7 +44,6 @@ export const faturasRoute: FastifyPluginAsync = async (fastify) => {
       const cpfRespNoBanco = onlyDigits(pessoa.cpf_resp_financeiro || '');
       const temNomeResp = Boolean(pessoa.nome_resp_financeiro?.trim());
 
-      // ── Fluxo PJ ────────────────────────────────────────────────────────────
       if (isPJ) {
         if (!contratoDigits) {
           return reply.code(400).send({ error: 'Número do contrato é obrigatório para pessoa jurídica.' });
@@ -58,12 +51,8 @@ export const faturasRoute: FastifyPluginAsync = async (fastify) => {
 
         const cnpjCadastro = onlyDigits(pessoa.cnpj_caepf_empresa || '');
         const cnpjInformado = onlyDigits(cnpj || '');
-        if (cnpjCadastro && cnpjInformado && cnpjInformado !== cnpjCadastro) {
-          return reply.code(400).send({ error: 'CNPJ informado não confere com o cadastro do titular.' });
-        }
         const cnpjEnvio = cnpjCadastro || cnpjInformado;
 
-        // Responsável financeiro (PJ): exige CPF do pagador quando o cadastro traz o CPF esperado
         if (possuiResp && temNomeResp && cpfRespNoBanco) {
           if (!cpfRespDigitado) {
             return reply.code(400).send({
@@ -80,14 +69,13 @@ export const faturasRoute: FastifyPluginAsync = async (fastify) => {
           }
         }
 
-        // Busca as faturas usando o CPF do titular e o contrato informado
         const token = await getToken();
         const payload: Record<string, string> = {
-          cpf: cpfCnpjDigits,
           cpfCnpj: cpfCnpjDigits,
+          cnpj: cnpjEnvio,
           contrato: contratoDigits,
         };
-        if (cnpjEnvio) payload.cnpj = cnpjEnvio;
+
         if (possuiResp && temNomeResp && cpfRespDigitado && cpfRespNoBanco && cpfRespDigitado === cpfRespNoBanco) {
           payload.cpf_resp_financeiro = cpfRespDigitado;
         }
@@ -122,9 +110,6 @@ export const faturasRoute: FastifyPluginAsync = async (fastify) => {
         };
       }
 
-      // ── Fluxo PF ────────────────────────────────────────────────────────────
-
-      // 2a. Valida data de nascimento (sempre exigida para PF)
       if (!dataNascDigits) {
         return reply.code(400).send({ error: 'Data de nascimento é obrigatória para pessoa física.' });
       }
@@ -134,9 +119,7 @@ export const faturasRoute: FastifyPluginAsync = async (fastify) => {
         return reply.code(400).send({ error: 'Data de nascimento incorreta.' });
       }
 
-      // 2b. Responsável financeiro ativo?
       if (possuiResp && temNomeResp) {
-        // Frontend deve solicitar o CPF do responsável e reenviar
         if (!cpfRespDigitado) {
           return reply.code(400).send({
             step: 'NEED_CPF_RESP',
@@ -153,14 +136,11 @@ export const faturasRoute: FastifyPluginAsync = async (fastify) => {
         }
       }
 
-      // 2c. Busca faturas PF
       const token = await getToken();
-      // Para PF, a API externa normalmente espera cpf + data_nascimento ou cpf do responsável
       const documentoConsulta = possuiResp && cpfRespDigitado ? cpfRespDigitado : cpfCnpjDigits;
       const payload: Record<string, any> = { cpf: documentoConsulta };
 
       if (possuiResp && cpfRespDigitado) {
-        // busca pelo CPF do responsável financeiro
       } else {
         payload.data_nascimento = pessoa.data_nascimento_titular;
       }
@@ -193,7 +173,6 @@ export const faturasRoute: FastifyPluginAsync = async (fastify) => {
       };
     } catch (error: any) {
       fastify.log.error(error);
-      // Repassa mensagem de negócio se possível
       const msg = error?.message || 'Erro ao processar validação.';
       return reply.code(500).send({ error: msg });
     }
