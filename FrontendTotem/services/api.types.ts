@@ -31,6 +31,9 @@ export interface Fatura {
   valorfatura?: number | string;
   valor_fatura?: number | string;
   valorComDesconto?: number | string;
+  /** Linha digitável (quando a API retorna junto com a fatura) */
+  linhadigitavel?: string;
+  linhaDigitavel?: string;
 }
 
 // Resposta da busca de faturas

@@ -47,8 +47,8 @@ export default function TotemBackground({
   } as const;
 
   const atendenteDims = {
-    width: isDesktop1366 ? 390 : atendenteWidth,
-    height: isDesktop1366 ? 390 : atendenteHeight,
+    width: isDesktop1366 ? 330 : atendenteWidth,
+    height: isDesktop1366 ? 330 : atendenteHeight,
   } as const;
 
   const atendentePos = {

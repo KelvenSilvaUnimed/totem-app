@@ -1,9 +1,10 @@
-import { KeyboardAvoidingView, Platform, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Text, TouchableOpacity, View } from 'react-native';
 import type { ScrollView } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { formatCpfInput } from '@/services/utils.service';
 import styles, { palette, scale } from '@/styles/totem.styles';
-import VirtualKeypad from '@/components/ui/virtual-keypad';
+import NumericKeypad from '@/components/ui/numeric-keypad';
+import InputCard from '@/components/ui/input-card';
 
 interface CpfRespFinanceiroStepProps {
   nomeRespFinanceiro: string;
@@ -34,24 +35,26 @@ export default function CpfRespFinanceiroStep({
   onConfirmar,
   onVoltar,
 }: CpfRespFinanceiroStepProps) {
+  const cpfDigits = (cpfRespFinanceiro || '').replace(/\D/g, '');
+
   const handleKeyPress = (key: string) => {
-    const numericOnly = cpfRespFinanceiro.replace(/\D/g, '');
-    if (numericOnly.length < 11) {
-      setCpfRespFinanceiro(formatCpfInput(numericOnly + key));
+    if (cpfDigits.length < 11) {
+      setCpfRespFinanceiro(formatCpfInput(cpfDigits + key));
     }
   };
 
-  const handleClear = () => setCpfRespFinanceiro('');
-  
   const handleDelete = () => {
-    const numericOnly = cpfRespFinanceiro.replace(/\D/g, '');
-    if (numericOnly.length > 0) {
-      setCpfRespFinanceiro(formatCpfInput(numericOnly.slice(0, -1)));
+    if (cpfDigits.length > 0) {
+      setCpfRespFinanceiro(formatCpfInput(cpfDigits.slice(0, -1)));
     }
   };
 
   return (
     <View style={styles.welcomeCard}>
+      <TouchableOpacity style={styles.backCornerButton} onPress={onVoltar} disabled={loading}>
+        <Ionicons name="chevron-back" size={22} color={palette.greenDark} />
+        <Text style={styles.backCornerText}>Voltar</Text>
+      </TouchableOpacity>
       <View style={styles.rfAjudaIconWrap}>
         <Ionicons name="shield-checkmark-outline" size={56} color={palette.greenDark} />
       </View>
@@ -64,38 +67,18 @@ export default function CpfRespFinanceiroStep({
         {'\n'}Informe o CPF do responsável para continuar.
       </Text>
 
-      <View style={[styles.totemFieldOuter, isTablet && styles.formContainerTablet]}>
-        <View style={styles.totemFieldBorder}>
-          <Ionicons name="person-outline" size={36} color={palette.greenDark} />
-          <TextInput
-            style={[styles.totemFieldTextInput, { pointerEvents: 'none' }]}
-            placeholder="000.000.000-00"
-            placeholderTextColor="#9ca3af"
-            value={cpfRespFinanceiro}
-            editable={false}
-          />
-        </View>
+      <View style={{ width: '100%', alignSelf: 'center' }}>
+        <InputCard iconName="person-outline" value={cpfRespFinanceiro} placeholder="000.000.000-00" maxWidth={700} />
       </View>
 
-      <VirtualKeypad 
-        onPress={handleKeyPress}
-        onClear={handleClear}
+      <NumericKeypad
+        marginTop={18}
+        onDigit={handleKeyPress}
         onDelete={handleDelete}
+        onConfirm={onConfirmar}
+        disabledConfirm={loading || cpfDigits.length !== 11}
+        confirmLabel="CONTINUAR"
       />
-
-      <View style={[styles.cpfButtonRow, isTablet && styles.cpfButtonRowTablet, { marginTop: scale(40) }]}>
-        <TouchableOpacity style={styles.cancelButton} onPress={onVoltar} disabled={loading}>
-          <Text style={styles.cancelButtonText}>Voltar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.greenButton, styles.greenButtonIconRow, loading && styles.buttonDisabled]}
-          onPress={onConfirmar}
-          disabled={loading}
-        >
-          <Ionicons name="checkmark-circle-outline" size={30} color={palette.white} />
-          <Text style={styles.greenButtonText}>CONFIRMAR</Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 }

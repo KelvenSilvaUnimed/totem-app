@@ -1,10 +1,11 @@
-import { ActivityIndicator, Platform, TextInput, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Platform, Text, TouchableOpacity, View } from 'react-native';
 import type { ScrollView } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import styles, { palette } from '@/styles/totem.styles';
 import { formatCpfInput } from '@/services/utils.service';
-import VirtualKeypad from '@/components/ui/virtual-keypad';
+import NumericKeypad from '@/components/ui/numeric-keypad';
 import FluidContainer from '@/components/ui/fluid-container';
+import InputCard from '@/components/ui/input-card';
 import { useEffect, useRef, useState } from 'react';
 
 interface CpfStepProps {
@@ -20,11 +21,11 @@ interface CpfStepProps {
 export default function CpfStep({ cpf, setCpf, loading, onConfirmar, scrollRef, setIsFormFocused }: CpfStepProps) {
   const [showKeypad, setShowKeypad] = useState(false);
   const lastAutoConfirmCpfRef = useRef<string>('');
+  const cpfDigits = (cpf || '').replace(/\D/g, '');
 
   const handleAbrirKeypad = () => {
     setShowKeypad(true);
     setIsFormFocused(true);
-    // Sobe o campo + keypad (funciona para web e nativo).
     requestAnimationFrame(() => {
       scrollRef.current?.scrollToEnd({ animated: true });
     });
@@ -43,18 +44,14 @@ export default function CpfStep({ cpf, setCpf, loading, onConfirmar, scrollRef, 
 
   const handleKeyPress = (key: string) => {
     // Remove formatação para adicionar o novo dígito
-    const numericOnly = cpf.replace(/\D/g, '');
-    if (numericOnly.length < 11) {
-      setCpf(formatCpfInput(numericOnly + key));
+    if (cpfDigits.length < 11) {
+      setCpf(formatCpfInput(cpfDigits + key));
     }
   };
 
-  const handleClear = () => setCpf('');
-  
   const handleDelete = () => {
-    const numericOnly = cpf.replace(/\D/g, '');
-    if (numericOnly.length > 0) {
-      setCpf(formatCpfInput(numericOnly.slice(0, -1)));
+    if (cpfDigits.length > 0) {
+      setCpf(formatCpfInput(cpfDigits.slice(0, -1)));
     }
   };
 
@@ -68,46 +65,30 @@ export default function CpfStep({ cpf, setCpf, loading, onConfirmar, scrollRef, 
         <Text style={styles.homeBemVindo}>Bem-vindo!</Text>
         <Text style={styles.homeInstrucaoCpf}>Informe o CPF do titular</Text>
 
-        <View style={styles.totemFieldOuter}>
-          <TouchableOpacity
-            activeOpacity={0.9}
+        <View style={{ width: '100%', alignSelf: 'center', marginBottom: 10 }}>
+          <InputCard
+            iconName="document-text-outline"
+            value={cpf}
+            placeholder="000.000.000-00"
+            maxWidth={700}
             onPress={handleAbrirKeypad}
-            style={
-              Platform.OS === 'web'
-                ? ({
-                    outlineStyle: 'none',
-                    outlineWidth: 0,
-                    outlineColor: 'transparent',
-                    boxShadow: 'none',
-                  } as any)
-                : undefined
-            }
-          >
-            <View style={styles.totemFieldBorder}>
-              <Ionicons name="document-text-outline" size={36} color={palette.greenDark} />
-              <TextInput
-                style={[styles.totemFieldTextInput, { pointerEvents: 'none' }]}
-                placeholder="000.000.000-00"
-                placeholderTextColor="#9ca3af"
-                value={cpf}
-                editable={false} // Impede o teclado do sistema no Web/Nativo
-              />
-              {loading ? (
-                <ActivityIndicator
-                  size="large"
-                  color={palette.orange}
-                  style={{ marginLeft: -38, marginRight: 58 }}
-                />
-              ) : null}
+          />
+          {loading ? (
+            <View style={{ marginTop: 10, alignItems: 'center' }}>
+              <ActivityIndicator size="large" color={palette.orange} />
             </View>
-          </TouchableOpacity>
+          ) : null}
         </View>
 
         {showKeypad ? (
-          <VirtualKeypad 
-            onPress={handleKeyPress}
-            onClear={handleClear}
+          <NumericKeypad
+            marginTop={8}
+            maxWidth={700}
+            onDigit={handleKeyPress}
             onDelete={handleDelete}
+            onConfirm={onConfirmar}
+            confirmLabel="CONTINUAR"
+            disabledConfirm={loading || cpfDigits.length !== 11}
           />
         ) : null}
 

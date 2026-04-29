@@ -1,9 +1,10 @@
-import { Platform, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import type { Beneficiario } from '@/services/api.types';
 import { formatDataNascimentoInput } from '@/services/utils.service';
 import styles, { palette, scale } from '@/styles/totem.styles';
-import VirtualKeypad from '@/components/ui/virtual-keypad';
+import NumericKeypad from '@/components/ui/numeric-keypad';
+import InputCard from '@/components/ui/input-card';
 
 interface ValidacaoStepProps {
   beneficiario: Beneficiario | null;
@@ -30,10 +31,14 @@ export default function ValidacaoStep({
   onReset,
 }: ValidacaoStepProps) {
   const nome = beneficiario?.nome_titular || '';
+  const contratoDigits = (campoComplementar || '').replace(/\D/g, '');
+  const dataDigits = (campoComplementar || '').replace(/\D/g, '');
+  const maxContratoLen = 20;
 
   const handleKeyPress = (key: string) => {
     if (isPJ) {
-      setCampoComplementar(campoComplementar + key);
+      if (contratoDigits.length >= maxContratoLen) return;
+      setCampoComplementar(contratoDigits + key);
     } else {
       const numericOnly = (campoComplementar || '').replace(/\D/g, '');
       if (numericOnly.length < 8) {
@@ -46,7 +51,7 @@ export default function ValidacaoStep({
   
   const handleDelete = () => {
     if (isPJ) {
-      setCampoComplementar((campoComplementar || '').slice(0, -1));
+      setCampoComplementar(contratoDigits.slice(0, -1));
     } else {
       const numericOnly = (campoComplementar || '').replace(/\D/g, '');
       if (numericOnly.length > 0) {
@@ -57,13 +62,18 @@ export default function ValidacaoStep({
 
   return (
     <View style={styles.welcomeCard}>
+      <TouchableOpacity style={styles.backCornerButton} onPress={onReset} disabled={loading}>
+        <Ionicons name="chevron-back" size={22} color={palette.greenDark} />
+        <Text style={styles.backCornerText}>Voltar</Text>
+      </TouchableOpacity>
       <View style={isPJ ? styles.pjBadge : styles.pfBadge}>
+        <Ionicons name="person-outline" size={22} color={palette.greenDark} />
         <Text style={isPJ ? styles.pjBadgeText : styles.pfBadgeText}>
           {isPJ ? 'PESSOA JURÍDICA' : 'PESSOA FÍSICA'}
         </Text>
       </View>
 
-      <Text style={styles.pjWelcome}>Olá, {nome}!</Text>
+      <Text style={[styles.pjWelcome, { fontSize: scale(34), marginBottom: scale(6) }]}>Olá, {nome}!</Text>
 
       {nomeEmpresaDoLookup ? (
         <Text style={[styles.pjNextStep, { fontStyle: 'normal', fontWeight: '600', color: palette.greenDark }]}>
@@ -71,41 +81,47 @@ export default function ValidacaoStep({
         </Text>
       ) : null}
 
-      <Text style={[styles.pjNascimentoInfo, { marginTop: nomeEmpresaDoLookup ? 10 : 35, marginBottom: 20 }]}>
-        {isPJ ? 'Informe o número do contrato para continuar' : 'Para continuar, informe a data de nascimento do titular'}
+      <Text style={[styles.pjNascimentoInfo, { marginTop: nomeEmpresaDoLookup ? 6 : 18, marginBottom: isPJ ? 6 : 12 }]}>
+        {isPJ ? 'Digite o número do contrato' : 'Para continuar, informe a data de nascimento do titular'}
       </Text>
 
-      <View style={[isPJ ? styles.formContainer : styles.formContainerPfData, isTablet && styles.formContainerTablet]}>
-        <View style={isPJ ? styles.totemFieldOuterTight : styles.pjNascimentoFieldOuter}>
-          <View style={isPJ ? styles.totemFieldBorder : styles.totemFieldBorderCompact}>
-            <Ionicons name={isPJ ? 'document-text-outline' : 'calendar-outline'} size={36} color={palette.greenDark} />
-            <TextInput
-              style={[styles.totemFieldTextInput, { pointerEvents: 'none' }]}
-              accessibilityLabel={isPJ ? 'Número do contrato' : 'Data de nascimento do titular'}
-              placeholder={isPJ ? 'Número do contrato' : 'DD/MM/AAAA'}
-              placeholderTextColor="#9ca3af"
+      {isPJ ? (
+        <>
+          <View style={{ width: '100%', alignSelf: 'center' }}>
+            <InputCard iconName="document-text-outline" value={contratoDigits} placeholder=" " maxWidth={700} />
+          </View>
+          <NumericKeypad
+            marginTop={8}
+            onDigit={handleKeyPress}
+            onDelete={handleDelete}
+            onConfirm={onConfirmar}
+            disabledConfirm={loading || contratoDigits.length === 0}
+            confirmLabel="CONTINUAR"
+          />
+        </>
+      ) : (
+        <>
+          <View style={{ width: '100%', alignSelf: 'center' }}>
+            <InputCard
+              iconName="calendar-outline"
               value={campoComplementar}
-              editable={false}
+              placeholder=""
+              maxWidth={700}
             />
           </View>
-        </View>
-      </View>
 
-      <VirtualKeypad
-        marginTop={isPJ ? 12 : 30}
-        onPress={handleKeyPress}
-        onClear={handleClear}
-        onDelete={handleDelete}
-      />
+          <NumericKeypad
+            marginTop={18}
+            onDigit={handleKeyPress}
+            onDelete={handleDelete}
+            onConfirm={onConfirmar}
+            disabledConfirm={loading || dataDigits.length !== 8}
+            confirmLabel="CONTINUAR"
+          />
+        </>
+      )}
 
-      <View style={[styles.cpfButtonRow, isTablet && styles.cpfButtonRowTablet, { marginTop: scale(40) }]}>
-        <TouchableOpacity style={styles.cancelButton} onPress={onReset} disabled={loading}>
-          <Text style={styles.cancelButtonText}>Voltar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.greenButton, loading && styles.buttonDisabled]} onPress={onConfirmar} disabled={loading}>
-          <Text style={styles.greenButtonText}>BUSCAR FATURAS</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Confirmação ocorre pelo teclado (CONTINUAR). */}
     </View>
   );
 }

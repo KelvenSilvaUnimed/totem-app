@@ -107,8 +107,9 @@ export function useViewport(): ViewportState {
   const isNativeTablet = Platform.OS !== 'web' && (viewportMax >= 900 || viewportMin >= 720);
   const isTablet = isWebTablet || isNativeTablet;
 
-  const atendenteWidth = viewportWidth * (isTablet ? 0.44 : 0.25);
-  const atendenteHeight = viewportHeight * (isTablet ? 0.67 : 0.55);
+  // Personagem atendente — um pouco menor para não competir com o conteúdo.
+  const atendenteWidth = viewportWidth * (isTablet ? 0.38 : 0.22);
+  const atendenteHeight = viewportHeight * (isTablet ? 0.60 : 0.48);
 
   return { viewportWidth, viewportHeight, isTablet, atendenteWidth, atendenteHeight };
 }
