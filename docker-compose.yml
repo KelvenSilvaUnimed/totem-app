@@ -3,6 +3,10 @@ services:
     build:
       context: ./Backend
       dockerfile: Dockerfile
+      args:
+        - http_proxy=${HTTP_PROXY:-}
+        - https_proxy=${HTTPS_PROXY:-}
+        - no_proxy=${NO_PROXY:-localhost,127.0.0.1}
     env_file:
       - ./Backend/.env
     ports:
@@ -12,7 +16,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 15s
     restart: unless-stopped
     networks:
       - totem-net
@@ -31,8 +35,11 @@ services:
       context: ./FrontendTotem
       dockerfile: Dockerfile
       args:
-        EXPO_PUBLIC_API_BASE_URL: "${EXPO_PUBLIC_API_BASE_URL:-/api}"
-        EXPO_PUBLIC_API_PREFIX: "${EXPO_PUBLIC_API_PREFIX:-}"
+        - http_proxy=${HTTP_PROXY:-}
+        - https_proxy=${HTTPS_PROXY:-}
+        - no_proxy=${NO_PROXY:-localhost,127.0.0.1}
+        - EXPO_PUBLIC_API_BASE_URL=${EXPO_PUBLIC_API_BASE_URL:-}
+        - EXPO_PUBLIC_API_PREFIX=${EXPO_PUBLIC_API_PREFIX:-}
     ports:
       - "${FRONTEND_PORT:-8081}:80"
     depends_on:
