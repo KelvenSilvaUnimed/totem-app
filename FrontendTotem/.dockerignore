@@ -1,8 +1,3 @@
 node_modules
-npm-debug.log
-.DS_Store
-.expo
-.expo-shared
-web-build
-dist
-.env
+.git
+# dist <--- Removi o dist daqui também!

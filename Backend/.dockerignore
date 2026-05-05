@@ -1,5 +1,4 @@
-node_modules
-npm-debug.log
-.DS_Store
+# node_modules <--- Comentei para permitir a cópia offline!
+.git
 .env
-/dist
+# dist

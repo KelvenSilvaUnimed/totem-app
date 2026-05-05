@@ -9,8 +9,8 @@ const normalizePrefix = (prefix?: string) => {
   return cleaned ? `/${cleaned}` : '';
 };
 
-const BASE_URL = normalizeBaseUrl(process.env.EXPO_PUBLIC_API_BASE_URL);
-const API_PREFIX = normalizePrefix(process.env.EXPO_PUBLIC_API_PREFIX);
+const BASE_URL = '';
+const API_PREFIX = '';
 const withPrefix = (path: string) => `${API_PREFIX}${path}`;
 
 export const API_CONFIG = {
