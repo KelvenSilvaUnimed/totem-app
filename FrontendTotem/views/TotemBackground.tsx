@@ -52,7 +52,7 @@ export default function TotemBackground({
   } as const;
 
   const atendentePos = {
-    bottom: isDesktop1366 ? -16 : -0.02 * vh,
+    bottom: 0,
     left: isDesktop1366 ? 35 : 0.03 * vw,
   } as const;
 
@@ -79,6 +79,7 @@ export default function TotemBackground({
           <Image
             source={require('@/assets/images/atendente.png')}
             style={[
+              
               styles.atendenteImage as ImageStyle,
               { width: atendenteDims.width, height: atendenteDims.height },
               isTablet && (styles.atendenteImageTablet as ImageStyle),

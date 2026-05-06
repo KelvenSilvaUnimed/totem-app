@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
   panel: {
     width: '100%',
     borderRadius: 30,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: 'rgba(243, 244, 246, 0.89)',
     ...Platform.select({
       web: { boxShadow: '0 18px 34px rgba(0,0,0,0.12)' },
       default: { elevation: 6 },

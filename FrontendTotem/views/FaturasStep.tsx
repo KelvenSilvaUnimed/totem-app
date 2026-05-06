@@ -15,7 +15,6 @@ interface FaturasStepProps {
   onVisualizar: (item: Fatura, index: number) => void;
   onImprimir: (item: Fatura, index: number) => void;
   onVoltar: () => void;
-  onReset: () => void;
 }
 
 /** Passo de listagem de faturas em aberto. */
@@ -31,7 +30,6 @@ export default function FaturasStep({
   onVisualizar,
   onImprimir,
   onVoltar,
-  onReset,
 }: FaturasStepProps) {
   const parseDdMmYyyy = (s: string) => {
     const m = /^\s*(\d{2})\/(\d{2})\/(\d{4})\s*$/.exec(String(s || ''));
@@ -51,27 +49,32 @@ export default function FaturasStep({
     return d.getTime() < today.getTime();
   };
 
+  const footerVoltar = (
+    <View style={[styles.buttonRow, isTablet && styles.buttonRowTablet]}>
+      <TouchableOpacity
+        style={[styles.secondaryButton, styles.secondaryButtonWithIcon]}
+        onPress={onVoltar}
+        disabled={loading}
+      >
+        <Ionicons name="chevron-back" size={22} color={palette.white} />
+        <Text style={styles.secondaryButtonText}>Voltar</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   if (!faturas.length) {
     return (
       <View style={[styles.card, styles.faturaScreenContainer]}>
         <View style={styles.semFaturaEmptyState}>
           <Text style={styles.semFaturaMensagemBonita}>Nenhuma fatura em aberto</Text>
         </View>
-        <View style={styles.buttonRow}>
-          <TouchableOpacity style={styles.secondaryButton} onPress={onReset}>
-            <Text style={styles.secondaryButtonText}>Consultar novo CPF/CNPJ</Text>
-          </TouchableOpacity>
-        </View>
+        {footerVoltar}
       </View>
     );
   }
 
   return (
     <View style={[styles.card, styles.faturaScreenContainer]}>
-      <TouchableOpacity style={styles.backCornerButton} onPress={onVoltar} disabled={loading}>
-        <Ionicons name="chevron-back" size={22} color={palette.greenDark} />
-        <Text style={styles.backCornerText}>Voltar</Text>
-      </TouchableOpacity>
       <Text style={styles.faturasTitle}>Faturas em aberto</Text>
       <Text style={styles.faturasSubtitle}>{resumo}</Text>
 
@@ -146,11 +149,7 @@ export default function FaturasStep({
         </ScrollView>
       </View>
 
-      <View style={[styles.buttonRow, isTablet && styles.buttonRowTablet]}>
-        <TouchableOpacity style={styles.secondaryButton} onPress={onReset} disabled={loading}>
-          <Text style={styles.secondaryButtonText}>Consultar novo CPF/CNPJ</Text>
-        </TouchableOpacity>
-      </View>
+      {footerVoltar}
     </View>
   );
 }

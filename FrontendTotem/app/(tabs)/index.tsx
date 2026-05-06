@@ -244,7 +244,6 @@ export default function TotemHomeScreen() {
                       onVisualizar={ctrl.handleVisualizarLinha}
                       onImprimir={ctrl.handleImprimirLinha}
                       onVoltar={ctrl.handleVoltarParaValidacao}
-                      onReset={ctrl.resetarFluxo}
                     />
                   </View>
                 )}
@@ -267,7 +266,9 @@ export default function TotemHomeScreen() {
       <BoletoModal
         visible={ctrl.isBoletoModalVisible}
         url={ctrl.boletoModalUrl}
+        loading={ctrl.loading}
         onVoltarParaFaturas={ctrl.handleVoltarParaFaturas}
+        onImprimir={ctrl.handleImprimir}
         onEncerrar={ctrl.handleEncerrarAtendimento}
       />
     </View>

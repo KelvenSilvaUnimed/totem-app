@@ -198,6 +198,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 22,
   },
+  secondaryButtonWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
   linkButtonText: {
     color: palette.greenDark,
     textDecorationLine: 'underline',
@@ -225,7 +231,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 1150,
     alignSelf: 'center',
-    backgroundColor: '#f3f4f6',
+    backgroundColor: 'rgba(243, 244, 246, 0.89)',
     borderRadius: 30,
     paddingVertical: 22,
     paddingHorizontal: 22,
@@ -503,6 +509,11 @@ const styles = StyleSheet.create({
   modalFooterButtonSecondary: {
     backgroundColor: '#008C50',
   },
+  modalFooterButtonOutline: {
+    backgroundColor: '#ffffff',
+    borderWidth: 2,
+    borderColor: '#008C50',
+  },
   modalFooterButtonText: {
     fontWeight: '700',
     fontSize: 16,
@@ -513,6 +524,9 @@ const styles = StyleSheet.create({
   },
   modalFooterButtonTextLight: {
     color: '#ffffff',
+  },
+  modalFooterButtonTextOutline: {
+    color: '#008C50',
   },
   actionsContainer: {},
   actionsTitle: {},
@@ -553,6 +567,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: scale(20),
     paddingHorizontal: scale(32),
+  },
+  /** Permite overlay de “toque fora” atrás do conteúdo / teclado na tela de CPF */
+  homeScreenRootRelative: {
+    position: 'relative',
+  },
+  homeKeypadDismissBackdrop: {
+    zIndex: 0,
+  },
+  homeScreenContentAboveKeypad: {
+    width: '100%',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  homeKeypadLayer: {
+    width: '100%',
+    alignItems: 'center',
+    zIndex: 2,
   },
   homeReceiptIconWrap: {
     marginBottom: scale(30),
@@ -1106,13 +1137,13 @@ const styles = StyleSheet.create({
   },
   atendenteContainer: {
     position: 'absolute',
-    bottom: scale(-22),
+    bottom: 0,
     left: scale(40),
     zIndex: 5,
   },
   atendenteContainerTablet: {
     left: '8%',
-    bottom: scale(-40),
+    bottom: 0,
   },
   atendenteImage: {
     zIndex: 1,
