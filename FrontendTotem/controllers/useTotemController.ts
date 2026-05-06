@@ -320,11 +320,7 @@ export function useTotemController(): TotemController {
     if (!boleto) { Alert.alert('Aviso', 'Nenhum boleto carregado.'); return; }
     const rawUrl = boleto.remoteUrl || boleto.url;
     if (!rawUrl) { Alert.alert('Erro', 'Não foi possível abrir o boleto.'); return; }
-    const isHttp = rawUrl.startsWith('http://') || rawUrl.startsWith('https://');
-    const isProxy = rawUrl.includes('/api/pdf');
-    const url = isHttp && !isProxy ? getPdfViewerUrl(rawUrl) : rawUrl;
-    if (!url) { Alert.alert('Erro', 'Não foi possível abrir o boleto.'); return; }
-    setBoletoModalUrl(url);
+    setBoletoModalUrl(rawUrl);
     setIsBoletoModalVisible(true);
   };
 

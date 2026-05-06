@@ -118,7 +118,23 @@ export async function imprimirBoleto(
   }
 }
 
-/** Gera URL de visualização do PDF via proxy. */
+/**
+ * Busca o PDF do boleto via GET no proxy do backend e retorna um objectURL local.
+ * O backend faz o fetch interno (GET) no servidor de storage e repassa o binário.
+ * Isso evita que o browser tente acessar o servidor interno diretamente.
+ */
+export async function fetchBoletoAsObjectUrl(remoteUrl: string): Promise<string> {
+  const proxyUrl = `${BASE_URL}${API_CONFIG.ENDPOINTS.BOLETO_VIEW}?url=${encodeURIComponent(remoteUrl)}`;
+  const response = await fetch(proxyUrl, { method: 'GET' });
+  if (!response.ok) {
+    throw new Error(`Erro ao carregar PDF: HTTP ${response.status}`);
+  }
+  const blob = await response.blob();
+  const pdfBlob = blob.type === 'application/pdf' ? blob : new Blob([blob], { type: 'application/pdf' });
+  return URL.createObjectURL(pdfBlob);
+}
+
+/** @deprecated Use fetchBoletoAsObjectUrl */
 export function getPdfViewerUrl(remoteUrl: string): string {
   return `${BASE_URL}${ENDPOINTS.PDF_VIEWER}?url=${encodeURIComponent(remoteUrl)}&t=${Date.now()}`;
 }

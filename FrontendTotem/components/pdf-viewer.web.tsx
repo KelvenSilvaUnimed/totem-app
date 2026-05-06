@@ -1,76 +1,121 @@
-import React, { useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 
 type Props = {
   source: { uri: string; cache?: boolean } | null;
   style?: any;
 };
 
+/**
+ * Versão web do visualizador de PDF.
+ *
+ * Fluxo:
+ *  1. Recebe source.uri (URL normalizada do boleto, ex: https://n-storage...com.br/document/...)
+ *  2. Faz GET no proxy do backend: /api/boleto/view?url=<encoded>
+ *     └─ O backend busca o PDF internamente (GET no storage) e repassa o binário
+ *  3. Converte o binário em Blob → URL.createObjectURL()
+ *  4. Passa o blob URL como src de um <iframe> — browser renderiza o PDF nativamente
+ *
+ * Não usa CDN externo (pdf.js), não usa srcDoc nem sandbox.
+ */
 export default function PdfViewer({ source, style }: Props) {
-  const viewerHtml = useMemo(() => {
-    if (!source?.uri) return '';
-    const safeUrl = JSON.stringify(source.uri);
-    return `<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <style>
-      html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #ffffff; }
-      #viewer { width: 100%; padding: 12px; box-sizing: border-box; }
-      .page { margin: 0 auto 16px; width: 100%; }
-      #error { display: none; padding: 24px; font-family: Arial, sans-serif; color: #0b4a56; }
-      #openBtn { background: #d3d94a; border: none; padding: 12px 18px; border-radius: 10px; font-weight: 700; }
-    </style>
-  </head>
-  <body>
-    <div id="viewer"></div>
-    <div id="error">
-      <div>Não foi possível renderizar o boleto no tablet.</div>
-      <div style="margin-top:12px;">
-        <button id="openBtn">Abrir PDF</button>
-      </div>
-    </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script>
-      const url = ${safeUrl};
-      const viewer = document.getElementById('viewer');
-      const errorBox = document.getElementById('error');
-      const openBtn = document.getElementById('openBtn');
-      openBtn.addEventListener('click', () => window.open(url, '_blank'));
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-      pdfjsLib.getDocument({ url }).promise.then(async (pdf) => {
-        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-          const page = await pdf.getPage(pageNum);
-          const viewport = page.getViewport({ scale: 1.5 });
-          const canvas = document.createElement('canvas');
-          const context = canvas.getContext('2d');
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-          canvas.style.width = '100%';
-          canvas.style.height = 'auto';
-          const wrapper = document.createElement('div');
-          wrapper.className = 'page';
-          wrapper.appendChild(canvas);
-          viewer.appendChild(wrapper);
-          await page.render({ canvasContext: context, viewport }).promise;
+  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!source?.uri) return;
+
+    let cancelled = false;
+    let createdUrl: string | null = null;
+
+    setLoading(true);
+    setError(null);
+    setObjectUrl(null);
+
+    const proxyUrl = `/api/boleto/view?url=${encodeURIComponent(source.uri)}`;
+
+    fetch(proxyUrl, { method: 'GET' })
+      .then(async response => {
+        if (!response.ok) {
+          let errText = '';
+          try { errText = await response.text(); } catch(e) {}
+          console.error('Falha no fetch do proxy:', response.status, errText);
+          throw new Error(`HTTP ${response.status} – ${errText || response.statusText}`);
         }
-      }).catch((err) => {
-        console.error('PDF render error', err);
-        viewer.style.display = 'none';
-        errorBox.style.display = 'block';
+        return response.blob();
+      })
+      .then((blob) => {
+        if (cancelled) return;
+        const pdfBlob =
+          blob.type === 'application/pdf'
+            ? blob
+            : new Blob([blob], { type: 'application/pdf' });
+        createdUrl = URL.createObjectURL(pdfBlob);
+        setObjectUrl(createdUrl);
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error('[PdfViewer] Erro ao carregar PDF:', err);
+        setError(err.message || 'Erro desconhecido');
+        setLoading(false);
       });
-    </script>
-  </body>
-</html>`;
+
+    return () => {
+      cancelled = true;
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
+    };
   }, [source?.uri]);
 
   if (!source) return null;
 
+  if (loading) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100%',
+          fontFamily: 'Arial, sans-serif',
+          fontSize: 16,
+          color: '#0b4a56',
+        }}
+      >
+        Carregando documento…
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100%',
+          fontFamily: 'Arial, sans-serif',
+          padding: 24,
+          color: '#c0392b',
+          textAlign: 'center' as const,
+        }}
+      >
+        <div style={{ fontSize: 16, fontWeight: 'bold' }}>
+          Não foi possível carregar o boleto.
+        </div>
+        <div style={{ fontSize: 12, marginTop: 8, color: '#888' }}>{error}</div>
+      </div>
+    );
+  }
+
+  if (!objectUrl) return null;
+
   return (
     <iframe
       title="Boleto"
-      srcDoc={viewerHtml}
-      sandbox="allow-scripts allow-same-origin"
+      src={objectUrl}
       style={{
         border: 'none',
         width: '100%',

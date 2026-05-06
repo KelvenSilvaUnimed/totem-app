@@ -12,6 +12,17 @@ const API_BOLETO =
 
 type BoletoResponse = { content?: Array<{ url?: string }> };
 
+/**
+ * Normaliza a URL do boleto retornada pela API:
+ * - Converte http:// → https://
+ * - Remove a porta :8086 (ou qualquer porta, se necessário)
+ */
+function normalizeBoletoUrl(raw: string): string {
+  return raw
+    .replace(/^http:\/\//i, 'https://')
+    .replace(/:8086(?=\/|$)/, '');
+}
+
 type PrintMode = 'service' | 'raw' | 'lpr' | 'ipp';
 
 type PrintMetrics = {
@@ -39,8 +50,10 @@ async function buscarUrlBoleto(numeroFatura: string | number): Promise<string | 
   });
 
   const first = Array.isArray(data?.content) ? data.content[0] : null;
-  const url =
+  const raw: string | undefined =
     typeof (first as any)?.url === 'string' ? (first as any).url : undefined;
+  // Normaliza: http → https e remove porta :8086
+  const url = raw ? normalizeBoletoUrl(raw) : undefined;
   return url;
 }
 
@@ -255,6 +268,76 @@ export const boletoRoute: FastifyPluginAsync = async (fastify) => {
       .header('Content-Disposition', `inline; filename="${fileName}"`)
       .header('Cache-Control', 'private, max-age=120');
 
+    return reply.send(stream);
+  });
+
+  /**
+   * GET /api/boleto/view?url=<url-normalizada>
+   * Permite abrir o PDF via GET (link direto / nova aba).
+   * O frontend monta: /api/boleto/view?url=<encodeURIComponent(url)>
+   */
+  fastify.get('/api/boleto/view', async (request, reply) => {
+    const { url } = request.query as { url?: string };
+
+    fastify.log.info(`[GET /api/boleto/view] url recebida: ${url}`);
+
+    if (!url || !isAllowedDocUrl(url)) {
+      fastify.log.warn(`[GET /api/boleto/view] Bloqueado por isAllowedDocUrl. url=${url}`);
+      return reply.code(400).send({ error: `URL invalida ou nao permitida: ${url}` });
+    }
+
+    const { statusCode, headers, body: stream } = await undiciRequest(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
+    });
+    
+    fastify.log.info(`[GET /api/boleto/view] undiciRequest status: ${statusCode}`);
+    
+    if (statusCode !== 200) {
+      let errText = '';
+      try { errText = await stream.text(); } catch(e) {}
+      fastify.log.error(`[GET /api/boleto/view] Erro no remote server: ${errText}`);
+      return reply.code(statusCode).send({ error: `Falha ao baixar PDF do storage (HTTP ${statusCode})`, details: errText });
+    }
+
+    const fileName = safeFilename(url.split('/').pop() || 'boleto.pdf');
+    reply
+      .header('Content-Type', headers['content-type'] || 'application/pdf')
+      .header('Content-Disposition', `inline; filename="${fileName}"`)
+      .header('Cache-Control', 'private, max-age=120');
+
+    return reply.send(stream);
+  });
+
+  /**
+   * GET /api/boleto/view/:numeroFatura
+   * Busca a URL do boleto na API do cliente e serve o PDF diretamente.
+   * O frontend abre: /api/boleto/view/123456
+   */
+  fastify.get('/api/boleto/view/:numeroFatura', async (request, reply) => {
+    const { numeroFatura } = request.params as { numeroFatura: string };
+
+    if (!numeroFatura) {
+      return reply.code(400).send({ error: 'numeroFatura e obrigatorio.' });
+    }
+
+    const url = await buscarUrlBoleto(numeroFatura);
+
+    if (!url) {
+      return reply.code(404).send({ error: 'Boleto nao encontrado.' });
+    }
+
+    const { statusCode, headers, body: stream } = await undiciRequest(url);
+    if (statusCode !== 200) return reply.code(statusCode).send(stream);
+
+    const fileName = safeFilename(`boleto-${numeroFatura}.pdf`);
+    reply
+      .header('Content-Type', headers['content-type'] || 'application/pdf')
+      .header('Content-Disposition', `inline; filename="${fileName}"`)
+      .header('Cache-Control', 'private, max-age=120');
+
+    fastify.log.info(`/api/boleto/view/${numeroFatura} -> ${url}`);
     return reply.send(stream);
   });
 

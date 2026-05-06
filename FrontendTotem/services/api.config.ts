@@ -22,6 +22,7 @@ export const API_CONFIG = {
     BOLETO: withPrefix('/api/boleto'),
     BOLETO_PROXY: withPrefix('/api/boleto/proxy'),
     BOLETO_PRINT: withPrefix('/api/boleto/print'),
+    BOLETO_VIEW: withPrefix('/api/boleto/view'),
     PDF_VIEWER: withPrefix('/api/pdf'),
   },
 
