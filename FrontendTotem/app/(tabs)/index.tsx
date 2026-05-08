@@ -12,10 +12,12 @@ import Animated, {
   Easing,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
   withTiming,
 } from 'react-native-reanimated';
 import { Image } from 'react-native';
 import type { ImageStyle } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 
 import { useTotemController } from '@/controllers/useTotemController';
 import { useViewport } from '@/hooks/use-viewport';
@@ -41,6 +43,8 @@ export default function TotemHomeScreen() {
 
   const stepOpacity = useSharedValue(1);
   const stepTranslateX = useSharedValue(0);
+  const statusOpacity = useSharedValue(1);
+  const statusTranslateY = useSharedValue(0);
 
   // Idle reset disparado pelo layout de inatividade
   useEffect(() => {
@@ -53,6 +57,38 @@ export default function TotemHomeScreen() {
   useEffect(() => {
     setIsFormFocused(false);
   }, [ctrl.step, setIsFormFocused]);
+
+  // Quando o teclado virtual é usado, garantimos que o ScrollView volte ao topo.
+  // Sem isso, ele pode ficar "preso" numa posição rolada com o scroll desabilitado.
+  useEffect(() => {
+    if (ctrl.step === 'cpf' || ctrl.step === 'validacao' || ctrl.step === 'cpf_resp_financeiro') {
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollTo?.({ y: 0, animated: false });
+      });
+    }
+  }, [ctrl.step, scrollRef]);
+
+  // Toast overlay (warn/err): aparece sobre a tela e some gradualmente em 10s.
+  useEffect(() => {
+    if (!ctrl.status) {
+      // Prepara para o próximo toast
+      statusOpacity.value = 1;
+      statusTranslateY.value = 0;
+      return;
+    }
+    if (ctrl.status.type === 'ok') return;
+
+    // Garante visibilidade imediata (mesmo antes da animação)
+    statusOpacity.value = 1;
+    statusTranslateY.value = 0;
+
+    // Mantém por ~9s e faz fade-out no último 1s (total ~10s)
+    statusOpacity.value = withDelay(9000, withTiming(0, { duration: 1000, easing: Easing.in(Easing.cubic) }));
+    statusTranslateY.value = withDelay(9000, withTiming(-8, { duration: 1000, easing: Easing.in(Easing.cubic) }));
+
+    const t = setTimeout(() => ctrl.clearStatus(), 10000);
+    return () => clearTimeout(t);
+  }, [ctrl.status, ctrl, statusOpacity, statusTranslateY]);
 
   // Animação suave ao trocar de etapa (mais confiável que entering/exiting no web).
   useEffect(() => {
@@ -67,22 +103,32 @@ export default function TotemHomeScreen() {
     transform: [{ translateX: stepTranslateX.value }],
   }));
 
+  const statusAnimStyle = useAnimatedStyle(() => ({
+    opacity: statusOpacity.value,
+    transform: [{ translateY: statusTranslateY.value }],
+  }));
+
 
   const renderStatus = () => {
     if (!ctrl.status || ctrl.status.type === 'ok') return null;
     const isWarn = ctrl.status.type === 'warn';
+    const icon = isWarn ? 'alert-circle-outline' : 'close-circle-outline';
     return (
-      <View
-        style={[
-          styles.status,
-          {
-            backgroundColor: isWarn ? 'rgba(63,20,5,0.8)' : 'rgba(62,12,17,0.82)',
-            borderColor: isWarn ? 'rgba(245,158,11,0.8)' : 'rgba(239,68,68,0.8)',
-          },
-        ]}
-      >
-        <Text style={styles.statusText}>{ctrl.status.message}</Text>
-      </View>
+      <Animated.View pointerEvents="none" style={[styles.statusToastOverlay, statusAnimStyle]}>
+        <View
+          style={[
+            styles.statusToast,
+            {
+              borderColor: isWarn ? 'rgba(245,158,11,0.95)' : 'rgba(239,68,68,0.95)',
+            },
+          ]}
+        >
+          <View style={styles.statusToastRow}>
+            <Ionicons name={icon as any} size={22} color="#ffffff" />
+            <Text style={styles.statusToastText}>{ctrl.status.message}</Text>
+          </View>
+        </View>
+      </Animated.View>
     );
   };
 
@@ -97,6 +143,7 @@ export default function TotemHomeScreen() {
       />
 
       <SafeAreaView style={styles.safeArea}>
+        {renderStatus()}
         <KeyboardAvoidingView
           style={styles.contentWrapper}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -104,14 +151,29 @@ export default function TotemHomeScreen() {
         >
           <Animated.ScrollView
             ref={scrollRef as any}
+            scrollEnabled={!(ctrl.step === 'cpf' || ctrl.step === 'validacao' || ctrl.step === 'cpf_resp_financeiro')}
             contentContainerStyle={[
               styles.scrollContent,
               isTablet && styles.scrollContentTablet,
-              keyboardHeight > 0 && { paddingBottom: keyboardHeight + 24 },
-              isFormFocused && {
+              // Quando o scroll está desativado (teclado virtual), evitamos centralização vertical
+              // e reduzimos o padding superior para não "cortar" o topo do conteúdo.
+              (ctrl.step === 'cpf' || ctrl.step === 'validacao' || ctrl.step === 'cpf_resp_financeiro') && {
+                justifyContent: 'flex-start',
+                paddingTop: 16,
+              },
+              // Na validação (PF e PJ), reduz o padding inferior padrão para evitar "vazio" rolável
+              // abaixo do teclado virtual (NumericKeypad).
+              ctrl.step === 'validacao' && { paddingBottom: 0 },
+              // Para teclado virtual (NumericKeypad), esse padding cria "vazio" rolável.
+              keyboardHeight > 0 && { paddingBottom: keyboardHeight + 45 },
+              isFormFocused && keyboardHeight > 0 && {
                 paddingBottom: Math.max(
                   keyboardHeight,
-                  ctrl.step === 'cpf' || (ctrl.step === 'validacao' && ctrl.isPessoaJuridica) ? 20 : 120,
+                  ctrl.step === 'cpf'
+                    ? 20
+                    : ctrl.step === 'validacao'
+                      ? (ctrl.isPessoaJuridica ? 20 : 60)
+                      : 120,
                 ),
               },
             ]}
@@ -119,8 +181,6 @@ export default function TotemHomeScreen() {
             keyboardShouldPersistTaps="handled"
             scrollEventThrottle={16}
           >
-            {renderStatus()}
-
             {/* Decorações de topo dentro do ScrollView para rolarem junto com o conteúdo */}
             <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, pointerEvents: 'none' }}>
               <View

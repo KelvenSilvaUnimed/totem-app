@@ -61,18 +61,17 @@ export default function CpfRespFinanceiroStep({
 
       <Text style={styles.pjWelcome}>Verificação de identidade</Text>
 
-      <Text style={[styles.pjNextStep, { marginTop: 8, marginBottom: 20 }]}>
-        Este plano possui responsável financeiro:{' '}
+      <Text style={[styles.pjNextStep, { marginTop: 8, marginBottom: 5 }]}>
+        Informe o CPF do(a) responsável financeiro:{' '}
         <Text style={{ fontWeight: '800', color: palette.greenDark }}>{nomeRespFinanceiro}</Text>
-        {'\n'}Informe o CPF do responsável para continuar.
       </Text>
 
-      <View style={{ width: '100%', alignSelf: 'center' }}>
+      <View style={{ width: '100%', alignSelf: 'center', marginBottom: 4 }}>
         <InputCard iconName="person-outline" value={cpfRespFinanceiro} placeholder="000.000.000-00" maxWidth={700} />
       </View>
 
       <NumericKeypad
-        marginTop={18}
+        marginTop={7}
         onDigit={handleKeyPress}
         onDelete={handleDelete}
         onConfirm={onConfirmar}

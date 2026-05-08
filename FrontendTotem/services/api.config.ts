@@ -9,8 +9,19 @@ const normalizePrefix = (prefix?: string) => {
   return cleaned ? `/${cleaned}` : '';
 };
 
-const BASE_URL = '';
-const API_PREFIX = '';
+/**
+ * Em dev, o frontend (Expo) e o backend ficam em portas diferentes,
+ * então precisamos de uma base URL absoluta (ex.: http://localhost:3000).
+ *
+ * Configure via env:
+ * - EXPO_PUBLIC_API_URL (recomendado)
+ * - API_URL (fallback)
+ */
+const BASE_URL = normalizeBaseUrl(
+  process.env.EXPO_PUBLIC_API_URL || process.env.API_URL || 'http://localhost:3000'
+);
+
+const API_PREFIX = normalizePrefix(process.env.EXPO_PUBLIC_API_PREFIX || process.env.API_PREFIX || '');
 const withPrefix = (path: string) => `${API_PREFIX}${path}`;
 
 export const API_CONFIG = {

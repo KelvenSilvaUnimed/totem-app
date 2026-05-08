@@ -193,6 +193,9 @@ const styles = StyleSheet.create({
     position: 'relative',
     zIndex: 3,
   },
+  secondaryButtonDark: {
+    backgroundColor: '#2E5016',
+  },
   secondaryButtonText: {
     color: palette.white,
     fontWeight: '600',
@@ -222,6 +225,44 @@ const styles = StyleSheet.create({
     color: palette.white,
     textAlign: 'center',
     fontSize: 20,
+  },
+  statusToast: {
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: 900,
+    borderRadius: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(15, 23, 42, 0.88)',
+    borderWidth: 2,
+    ...shadow('0 12px 28px rgba(0,0,0,0.25)', {
+      color: '#000',
+      offset: { width: 0, height: 10 },
+      opacity: 0.25,
+      radius: 18,
+      elevation: 10,
+    }),
+  },
+  statusToastOverlay: {
+    position: 'absolute',
+    top: 10,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    zIndex: 9999,
+  },
+  statusToastRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    justifyContent: 'center',
+  },
+  statusToastText: {
+    color: '#ffffff',
+    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: '700',
+    flexShrink: 1,
   },
   faturaScroll: {
     marginTop: 24,
@@ -514,6 +555,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#008C50',
   },
+  modalFooterButtonDark: {
+    backgroundColor: '#2E5016',
+    borderWidth: 0,
+  },
   modalFooterButtonText: {
     fontWeight: '700',
     fontSize: 16,
@@ -527,6 +572,9 @@ const styles = StyleSheet.create({
   },
   modalFooterButtonTextOutline: {
     color: '#008C50',
+  },
+  modalFooterButtonTextDark: {
+    color: '#ffffff',
   },
   actionsContainer: {},
   actionsTitle: {},
@@ -830,6 +878,8 @@ const styles = StyleSheet.create({
     top: 18,
     left: 18,
     backgroundColor: '#ffffff',
+    borderWidth: 2,
+    borderColor: palette.greenDark,
     borderRadius: 999,
     paddingVertical: 14,
     paddingHorizontal: 22,

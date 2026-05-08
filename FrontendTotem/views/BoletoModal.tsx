@@ -26,15 +26,15 @@ export default function BoletoModal({
         <View style={styles.modalCard}>
           <PdfViewer source={url ? { uri: url } : null} style={styles.modalPdf} />
           <View style={styles.modalFooter}>
-            <TouchableOpacity style={[styles.modalFooterButton, styles.modalFooterButtonSecondary]} onPress={onVoltarParaFaturas}>
-              <Text style={[styles.modalFooterButtonText, styles.modalFooterButtonTextLight]}>Ver outro boleto</Text>
+            <TouchableOpacity style={[styles.modalFooterButton, styles.modalFooterButtonOutline]} onPress={onVoltarParaFaturas}>
+              <Text style={[styles.modalFooterButtonText, styles.modalFooterButtonTextOutline]}>Ver outro boleto</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.modalFooterButton, styles.modalFooterButtonOutline, loading && styles.buttonDisabled]}
+              style={[styles.modalFooterButton, styles.modalFooterButtonDark, loading && styles.buttonDisabled]}
               onPress={() => void onImprimir()}
               disabled={loading}
             >
-              <Text style={[styles.modalFooterButtonText, styles.modalFooterButtonTextOutline]}>Imprimir</Text>
+              <Text style={[styles.modalFooterButtonText, styles.modalFooterButtonTextDark]}>Imprimir</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.modalFooterButton, styles.modalFooterButtonPrimary]} onPress={onEncerrar}>
               <Text style={[styles.modalFooterButtonText, styles.modalFooterButtonTextPrimary]}>Encerrar atendimento</Text>
