@@ -13,7 +13,6 @@ interface FaturasStepProps {
   formatarValorFatura: (item: Fatura) => string;
   formatarDataFatura: (item: Fatura) => string;
   onVisualizar: (item: Fatura, index: number) => void;
-  onImprimir: (item: Fatura, index: number) => void;
   onVoltar: () => void;
 }
 
@@ -28,7 +27,6 @@ export default function FaturasStep({
   formatarValorFatura,
   formatarDataFatura,
   onVisualizar,
-  onImprimir,
   onVoltar,
 }: FaturasStepProps) {
   const parseDdMmYyyy = (s: string) => {
@@ -124,20 +122,6 @@ export default function FaturasStep({
                         <>
                           <Ionicons name="eye-outline" size={18} color={palette.greenDark} />
                           <Text style={styles.faturaActionOutlineText}>Visualizar</Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.faturaActionPrimary, loading && styles.buttonDisabled]}
-                      onPress={() => onImprimir(item, index)}
-                      disabled={loading}
-                    >
-                      {selected && loading ? (
-                        <ActivityIndicator color="#ffffff" />
-                      ) : (
-                        <>
-                          <Ionicons name="print-outline" size={18} color="#ffffff" />
-                          <Text style={styles.faturaActionPrimaryText}>Imprimir</Text>
                         </>
                       )}
                     </TouchableOpacity>
