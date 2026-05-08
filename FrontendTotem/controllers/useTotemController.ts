@@ -54,6 +54,7 @@ export interface TotemController {
   cpfRespFinanceiro: string;
   setCpfRespFinanceiro: (v: string) => void;
   resetarFluxoRef: React.MutableRefObject<() => void>;
+  clearStatus: () => void;
 
   // Handlers
   setStep: (step: Step) => void;
@@ -153,6 +154,7 @@ export function useTotemController(): TotemController {
 
   // ── Utilitários internos ────────────────────────────────────────────────────
   const setStatusMessage = (type: StatusType, message: string) => setStatus({ type, message });
+  const clearStatus = () => setStatus(null);
 
   const possuiRespFinanceiroAtivo = (b: Beneficiario | null) => {
     const flag = String(b?.possui_resp_financeiro ?? '').trim().toUpperCase();
@@ -189,8 +191,19 @@ export function useTotemController(): TotemController {
       setFaturas(lista);
       setStep('faturas');
       setStatusMessage('ok', `Encontramos ${lista.length} fatura${lista.length === 1 ? '' : 's'} em aberto.`);
+      return true;
     } catch (error: any) {
-      setStatusMessage('err', error?.message || 'Falha ao buscar faturas.');
+      const msg = String(error?.message || 'Falha ao buscar faturas.');
+      // Quando o CPF do responsável financeiro não confere, a API pode retornar 403/"Acesso negado".
+      // Nesse caso, mantemos o usuário no passo de CPF do responsável para tentar novamente.
+      if (cpfResp && /acesso\s+negado|forbidden|unauthorized|403/i.test(msg)) {
+        setStep('cpf_resp_financeiro');
+        setCpfRespFinanceiro('');
+        setStatusMessage('warn', 'CPF do responsável financeiro incorreto. Tente novamente.');
+        return false;
+      }
+      setStatusMessage('err', msg);
+      return false;
     } finally {
       setLoading(false);
     }
@@ -297,8 +310,10 @@ export function useTotemController(): TotemController {
       return;
     }
     const p = pendingFaturasRequest;
-    setPendingFaturasRequest(null);
-    void carregarFaturas(p.cpfCnpj, p.segundoParam, p.opts, cpfDigits);
+    void (async () => {
+      const ok = await carregarFaturas(p.cpfCnpj, p.segundoParam, p.opts, cpfDigits);
+      if (ok) setPendingFaturasRequest(null);
+    })();
   };
 
   const handleVisualizarLinha = async (item: Fatura, index: number) => {
@@ -389,6 +404,7 @@ export function useTotemController(): TotemController {
     boletoAtual, boletoModalUrl, isBoletoModalVisible,
     isPessoaJuridica, resumoFaturas, nomeEmpresaDoLookup,
     resetarFluxoRef,
+    clearStatus,
     handleLookup, handleConfirmarValidacao, handleContinuarRespFinanceiro,
     handleConfirmarCpfRespFinanceiro,
     handleVisualizarLinha, handleImprimirLinha, handleImprimir,

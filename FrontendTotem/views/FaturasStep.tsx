@@ -52,7 +52,7 @@ export default function FaturasStep({
   const footerVoltar = (
     <View style={[styles.buttonRow, isTablet && styles.buttonRowTablet]}>
       <TouchableOpacity
-        style={[styles.secondaryButton, styles.secondaryButtonWithIcon]}
+        style={[styles.secondaryButton, styles.secondaryButtonDark, styles.secondaryButtonWithIcon]}
         onPress={onVoltar}
         disabled={loading}
       >

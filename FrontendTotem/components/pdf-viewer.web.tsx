@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_CONFIG } from '@/services/api.config';
 
 type Props = {
   source: { uri: string; cache?: boolean } | null;
@@ -32,7 +33,8 @@ export default function PdfViewer({ source, style }: Props) {
     setError(null);
     setObjectUrl(null);
 
-    const proxyUrl = `/api/boleto/view?url=${encodeURIComponent(source.uri)}`;
+    // Usa sempre o backend da API para evitar 404 do Expo Router no /api/*.
+    const proxyUrl = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.BOLETO_VIEW}?url=${encodeURIComponent(source.uri)}`;
 
     fetch(proxyUrl, { method: 'GET' })
       .then(async response => {

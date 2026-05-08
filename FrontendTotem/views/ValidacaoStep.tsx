@@ -101,7 +101,7 @@ export default function ValidacaoStep({
         </>
       ) : (
         <>
-          <View style={{ width: '100%', alignSelf: 'center' }}>
+          <View style={{ width: '100%', alignSelf: 'center', marginBottom: 2 }}>
             <InputCard
               iconName="calendar-outline"
               value={campoComplementar}
@@ -111,7 +111,7 @@ export default function ValidacaoStep({
           </View>
 
           <NumericKeypad
-            marginTop={18}
+            marginTop={8}
             onDigit={handleKeyPress}
             onDelete={handleDelete}
             onConfirm={onConfirmar}

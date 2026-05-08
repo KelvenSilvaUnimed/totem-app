@@ -80,7 +80,7 @@ export default function CpfStep({ cpf, setCpf, loading, onConfirmar, scrollRef, 
           <Text style={styles.homeBemVindo}>Bem-vindo!</Text>
           <Text style={styles.homeInstrucaoCpf}>Informe o CPF do titular</Text>
 
-          <View style={{ width: '100%', alignSelf: 'center', marginBottom: 10 }}>
+          <View style={{ width: '100%', alignSelf: 'center', marginBottom: 4 }}>
             <InputCard
               iconName="document-text-outline"
               value={cpf}
@@ -99,7 +99,7 @@ export default function CpfStep({ cpf, setCpf, loading, onConfirmar, scrollRef, 
         {showKeypad ? (
           <View style={styles.homeKeypadLayer}>
             <NumericKeypad
-              marginTop={8}
+              marginTop={2}
               maxWidth={700}
               onDigit={handleKeyPress}
               onDelete={handleDelete}
