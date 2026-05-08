@@ -8,6 +8,7 @@ interface BoletoModalProps {
   loading?: boolean;
   onVoltarParaFaturas: () => void;
   onImprimir: () => void | Promise<void>;
+  onEncerrar: () => void;
 }
 
 /** Modal de visualização do boleto em PDF. */
@@ -17,6 +18,7 @@ export default function BoletoModal({
   loading = false,
   onVoltarParaFaturas,
   onImprimir,
+  onEncerrar,
 }: BoletoModalProps) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onVoltarParaFaturas}>
@@ -25,7 +27,7 @@ export default function BoletoModal({
           <PdfViewer source={url ? { uri: url } : null} style={styles.modalPdf} />
           <View style={styles.modalFooter}>
             <TouchableOpacity style={[styles.modalFooterButton, styles.modalFooterButtonOutline]} onPress={onVoltarParaFaturas}>
-              <Text style={[styles.modalFooterButtonText, styles.modalFooterButtonTextOutline]}>Voltar</Text>
+              <Text style={[styles.modalFooterButtonText, styles.modalFooterButtonTextOutline]}>Ver outro boleto</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.modalFooterButton, styles.modalFooterButtonDark, loading && styles.buttonDisabled]}
@@ -33,6 +35,9 @@ export default function BoletoModal({
               disabled={loading}
             >
               <Text style={[styles.modalFooterButtonText, styles.modalFooterButtonTextDark]}>Imprimir</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.modalFooterButton, styles.modalFooterButtonPrimary]} onPress={onEncerrar}>
+              <Text style={[styles.modalFooterButtonText, styles.modalFooterButtonTextPrimary]}>Encerrar atendimento</Text>
             </TouchableOpacity>
           </View>
         </View>

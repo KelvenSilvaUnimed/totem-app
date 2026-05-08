@@ -182,9 +182,11 @@ export function useTotemController(): TotemController {
         setSelectedFatura(null);
         setBoletoAtual(null);
         setStep('faturas');
-        // Sem balão nesta situação: a própria tela de faturas já mostra "Nenhuma fatura em aberto".
-        setStatus(null);
-        return true;
+        setStatusMessage(
+          'warn',
+          'Não encontramos faturas em aberto para estes dados.',
+        );
+        return;
       }
       setFaturas(lista);
       setStep('faturas');

@@ -61,7 +61,7 @@ export default function TotemHomeScreen() {
   // Quando o teclado virtual é usado, garantimos que o ScrollView volte ao topo.
   // Sem isso, ele pode ficar "preso" numa posição rolada com o scroll desabilitado.
   useEffect(() => {
-    if (ctrl.step === 'validacao' || ctrl.step === 'cpf_resp_financeiro') {
+    if (ctrl.step === 'cpf' || ctrl.step === 'validacao' || ctrl.step === 'cpf_resp_financeiro') {
       requestAnimationFrame(() => {
         scrollRef.current?.scrollTo?.({ y: 0, animated: false });
       });
@@ -151,13 +151,13 @@ export default function TotemHomeScreen() {
         >
           <Animated.ScrollView
             ref={scrollRef as any}
-            scrollEnabled={!(ctrl.step === 'validacao' || ctrl.step === 'cpf_resp_financeiro')}
+            scrollEnabled={!(ctrl.step === 'cpf' || ctrl.step === 'validacao' || ctrl.step === 'cpf_resp_financeiro')}
             contentContainerStyle={[
               styles.scrollContent,
               isTablet && styles.scrollContentTablet,
               // Quando o scroll está desativado (teclado virtual), evitamos centralização vertical
               // e reduzimos o padding superior para não "cortar" o topo do conteúdo.
-              (ctrl.step === 'validacao' || ctrl.step === 'cpf_resp_financeiro') && {
+              (ctrl.step === 'cpf' || ctrl.step === 'validacao' || ctrl.step === 'cpf_resp_financeiro') && {
                 justifyContent: 'flex-start',
                 paddingTop: 16,
               },
@@ -302,6 +302,7 @@ export default function TotemHomeScreen() {
                       formatarValorFatura={ctrl.formatarValorFatura}
                       formatarDataFatura={ctrl.formatarDataFatura}
                       onVisualizar={ctrl.handleVisualizarLinha}
+                      onImprimir={ctrl.handleImprimirLinha}
                       onVoltar={ctrl.handleVoltarParaValidacao}
                     />
                   </View>
@@ -328,6 +329,7 @@ export default function TotemHomeScreen() {
         loading={ctrl.loading}
         onVoltarParaFaturas={ctrl.handleVoltarParaFaturas}
         onImprimir={ctrl.handleImprimir}
+        onEncerrar={ctrl.handleEncerrarAtendimento}
       />
     </View>
   );
