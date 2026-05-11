@@ -17,9 +17,19 @@ const normalizePrefix = (prefix?: string) => {
  * - EXPO_PUBLIC_API_URL (recomendado)
  * - API_URL (fallback)
  */
-const BASE_URL = normalizeBaseUrl(
-  process.env.EXPO_PUBLIC_API_URL || process.env.API_URL || 'http://localhost:3000' || 'http://192.168.177.77:3000'
-);
+const getDynamicBaseUrl = () => {
+  if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
+  if (process.env.API_URL) return process.env.API_URL;
+  
+  // Se estiver rodando no navegador (web), usa o mesmo IP/domínio de onde carregou a página, mas na porta 3000
+  if (typeof window !== 'undefined' && window.location && window.location.hostname) {
+    return `${window.location.protocol}//${window.location.hostname}:3000`;
+  }
+  
+  return 'http://localhost:3000';
+};
+
+const BASE_URL = normalizeBaseUrl(getDynamicBaseUrl());
 
 const API_PREFIX = normalizePrefix(process.env.EXPO_PUBLIC_API_PREFIX || process.env.API_PREFIX || '');
 const withPrefix = (path: string) => `${API_PREFIX}${path}`;
