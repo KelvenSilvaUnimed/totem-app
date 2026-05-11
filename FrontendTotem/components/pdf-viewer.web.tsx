@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { API_CONFIG } from '@/services/api.config';
+import type { PdfViewerPrintHandle } from '@/components/pdf-viewer-handle';
 
 type Props = {
   source: { uri: string; cache?: boolean } | null;
@@ -10,18 +11,32 @@ type Props = {
  * Versão web do visualizador de PDF.
  *
  * Fluxo:
- *  1. Recebe source.uri (URL normalizada do boleto, ex: https://n-storage...com.br/document/...)
- *  2. Faz GET no proxy do backend: /api/boleto/view?url=<encoded>
- *     └─ O backend busca o PDF internamente (GET no storage) e repassa o binário
- *  3. Converte o binário em Blob → URL.createObjectURL()
- *  4. Passa o blob URL como src de um <iframe> — browser renderiza o PDF nativamente
+ *  1. Recebe source.uri (URL normalizada do boleto)
+ *  2. Faz GET no proxy do backend: BASE_URL + /api/boleto/view?url=<encoded>
+ *  3. Blob → URL.createObjectURL()
+ *  4. iframe renderiza o PDF
  *
- * Não usa CDN externo (pdf.js), não usa srcDoc nem sandbox.
+ * Impressão (totem): chamar ref.printDocument() → contentWindow.print().
+ * Para não mostrar diálogo no Chrome/Edge em kiosk, use a flag --kiosk-printing e defina impressora USB como padrão no Windows.
  */
-export default function PdfViewer({ source, style }: Props) {
+const PdfViewer = forwardRef<PdfViewerPrintHandle, Props>(function PdfViewer({ source, style }, ref) {
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useImperativeHandle(ref, () => ({
+    printDocument: () => {
+      try {
+        const w = iframeRef.current?.contentWindow;
+        if (!w) return;
+        w.focus();
+        w.print();
+      } catch (e) {
+        console.error('[PdfViewer] printDocument:', e);
+      }
+    },
+  }));
 
   useEffect(() => {
     if (!source?.uri) return;
@@ -33,14 +48,15 @@ export default function PdfViewer({ source, style }: Props) {
     setError(null);
     setObjectUrl(null);
 
-    // Usa sempre o backend da API para evitar 404 do Expo Router no /api/*.
     const proxyUrl = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.BOLETO_VIEW}?url=${encodeURIComponent(source.uri)}`;
 
     fetch(proxyUrl, { method: 'GET' })
-      .then(async response => {
+      .then(async (response) => {
         if (!response.ok) {
           let errText = '';
-          try { errText = await response.text(); } catch(e) {}
+          try {
+            errText = await response.text();
+          } catch (e) {}
           console.error('Falha no fetch do proxy:', response.status, errText);
           throw new Error(`HTTP ${response.status} – ${errText || response.statusText}`);
         }
@@ -49,9 +65,7 @@ export default function PdfViewer({ source, style }: Props) {
       .then((blob) => {
         if (cancelled) return;
         const pdfBlob =
-          blob.type === 'application/pdf'
-            ? blob
-            : new Blob([blob], { type: 'application/pdf' });
+          blob.type === 'application/pdf' ? blob : new Blob([blob], { type: 'application/pdf' });
         createdUrl = URL.createObjectURL(pdfBlob);
         setObjectUrl(createdUrl);
         setLoading(false);
@@ -104,9 +118,7 @@ export default function PdfViewer({ source, style }: Props) {
           textAlign: 'center' as const,
         }}
       >
-        <div style={{ fontSize: 16, fontWeight: 'bold' }}>
-          Não foi possível carregar o boleto.
-        </div>
+        <div style={{ fontSize: 16, fontWeight: 'bold' }}>Não foi possível carregar o boleto.</div>
         <div style={{ fontSize: 12, marginTop: 8, color: '#888' }}>{error}</div>
       </div>
     );
@@ -116,6 +128,7 @@ export default function PdfViewer({ source, style }: Props) {
 
   return (
     <iframe
+      ref={iframeRef}
       title="Boleto"
       src={objectUrl}
       style={{
@@ -126,4 +139,6 @@ export default function PdfViewer({ source, style }: Props) {
       }}
     />
   );
-}
+});
+
+export default PdfViewer;

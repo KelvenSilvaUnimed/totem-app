@@ -1,16 +1,22 @@
-import React, { useEffect, useState } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { ActivityIndicator, Alert, View, ViewStyle } from 'react-native';
 import Pdf from 'react-native-pdf';
 import RNBlobUtil from 'react-native-blob-util';
+import type { PdfViewerPrintHandle } from '@/components/pdf-viewer-handle';
 
 type Props = {
   source: { uri: string; cache?: boolean } | null;
   style?: ViewStyle | any;
 };
 
-export default function PdfViewer({ source, style }: Props) {
+/** Tablet: impressão segue pelo backend (/api/boleto/print); ref existe só por compatibilidade com web. */
+const PdfViewer = forwardRef<PdfViewerPrintHandle, Props>(function PdfViewer({ source, style }, ref) {
   const [localUri, setLocalUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useImperativeHandle(ref, () => ({
+    printDocument: () => {},
+  }));
 
   useEffect(() => {
     let isActive = true;
@@ -77,4 +83,6 @@ export default function PdfViewer({ source, style }: Props) {
       }}
     />
   );
-}
+});
+
+export default PdfViewer;
