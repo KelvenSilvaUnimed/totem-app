@@ -18,7 +18,7 @@ const normalizePrefix = (prefix?: string) => {
  * - API_URL (fallback)
  */
 const BASE_URL = normalizeBaseUrl(
-  process.env.EXPO_PUBLIC_API_URL || process.env.API_URL || 'http://localhost:3000'
+  process.env.EXPO_PUBLIC_API_URL || process.env.API_URL || 'http://localhost:3000' || 'http://192.168.177.77:3000'
 );
 
 const API_PREFIX = normalizePrefix(process.env.EXPO_PUBLIC_API_PREFIX || process.env.API_PREFIX || '');
