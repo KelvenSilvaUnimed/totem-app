@@ -21,9 +21,10 @@ const getDynamicBaseUrl = () => {
   if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
   if (process.env.API_URL) return process.env.API_URL;
   
-  // Se estiver rodando no navegador (web), usa o mesmo IP/domínio de onde carregou a página, mas na porta 3000
-  if (typeof window !== 'undefined' && window.location && window.location.hostname) {
-    return `${window.location.protocol}//${window.location.hostname}:3000`;
+  // Se estiver rodando no navegador (web), usa o mesmo IP/domínio de onde carregou a página (sem porta fixa!).
+  // O seu nginx.conf já faz o proxy_pass de /api para o backend na porta 3000 internamente.
+  if (typeof window !== 'undefined' && window.location && window.location.origin) {
+    return window.location.origin;
   }
   
   return 'http://localhost:3000';
