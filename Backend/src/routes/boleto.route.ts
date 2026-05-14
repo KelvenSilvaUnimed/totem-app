@@ -72,7 +72,7 @@ async function downloadPdfBuffer(url: string) {
 
 async function sendToNetworkPrinter(buffer: Buffer) {
   if (!CONFIG.PRINT_HOST) {
-    throw new Error('PRINT_HOST n�o configurado.');
+    throw new Error('PRINT_HOST não configurado.');
   }
 
   const host = CONFIG.PRINT_HOST;
@@ -97,10 +97,10 @@ async function sendToNetworkPrinter(buffer: Buffer) {
 
 async function sendToLprPrinter(buffer: Buffer, fileName: string) {
   if (!CONFIG.PRINT_HOST) {
-    throw new Error('PRINT_HOST n�o configurado.');
+    throw new Error('PRINT_HOST não configurado.');
   }
   if (!CONFIG.PRINT_QUEUE) {
-    throw new Error('PRINT_QUEUE n�o configurado para LPR.');
+    throw new Error('PRINT_QUEUE não configurado para LPR.');
   }
 
   const host = CONFIG.PRINT_HOST;
@@ -133,11 +133,11 @@ async function sendToLprPrinter(buffer: Buffer, fileName: string) {
 
         const controlHeader = Buffer.from(`\x02${Buffer.byteLength(controlContent)} ${controlFileName}\n`, 'binary');
         await writeAndWaitAck(socket, controlHeader);
-        await writeAndWaitAck(socket, Buffer.concat([Buffer.from(controlContent, 'binary'), Buffer.from([0]) ]));
+        await writeAndWaitAck(socket, Buffer.concat([Buffer.from(controlContent, 'binary'), Buffer.from([0])]));
 
         const dataHeader = Buffer.from(`\x03${buffer.length} ${dataFileName}\n`, 'binary');
         await writeAndWaitAck(socket, dataHeader);
-        await writeAndWaitAck(socket, Buffer.concat([buffer, Buffer.from([0]) ]));
+        await writeAndWaitAck(socket, Buffer.concat([buffer, Buffer.from([0])]));
 
         socket.end();
         resolve();
@@ -151,10 +151,10 @@ async function sendToLprPrinter(buffer: Buffer, fileName: string) {
 
 async function sendToIppPrinter(buffer: Buffer, fileName: string) {
   if (!CONFIG.PRINT_HOST) {
-    throw new Error('PRINT_HOST n�o configurado.');
+    throw new Error('PRINT_HOST não configurado.');
   }
   if (!CONFIG.PRINT_QUEUE) {
-    throw new Error('PRINT_QUEUE n�o configurado para IPP.');
+    throw new Error('PRINT_QUEUE não configurado para IPP.');
   }
 
   const host = CONFIG.PRINT_HOST;
@@ -195,7 +195,7 @@ async function sendToPrintService(payload: Record<string, any>) {
 
   if (!res.ok) {
     const t = await res.text().catch(() => '');
-    throw new Error(`Falha no servi�o de impress�o: ${res.status} ${t}`);
+    throw new Error(`Falha no serviço de impressão: ${res.status} ${t}`);
   }
 
   const ct = res.headers.get('content-type') || '';
@@ -291,12 +291,12 @@ export const boletoRoute: FastifyPluginAsync = async (fastify) => {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
       }
     });
-    
+
     fastify.log.info(`[GET /api/boleto/view] undiciRequest status: ${statusCode}`);
-    
+
     if (statusCode !== 200) {
       let errText = '';
-      try { errText = await stream.text(); } catch(e) {}
+      try { errText = await stream.text(); } catch (e) { }
       fastify.log.error(`[GET /api/boleto/view] Erro no remote server: ${errText}`);
       return reply.code(statusCode).send({ error: `Falha ao baixar PDF do storage (HTTP ${statusCode})`, details: errText });
     }
@@ -351,7 +351,7 @@ export const boletoRoute: FastifyPluginAsync = async (fastify) => {
 
     try {
       if (!url && !numeroFatura) {
-        return reply.code(400).send({ error: 'numeroFatura ou url � obrigat�rio' });
+        return reply.code(400).send({ error: 'numeroFatura ou url é obrigatório' });
       }
 
       if (!url && numeroFatura) {
@@ -359,11 +359,11 @@ export const boletoRoute: FastifyPluginAsync = async (fastify) => {
       }
 
       if (!url) {
-        return reply.code(404).send({ error: 'Boleto n�o encontrado' });
+        return reply.code(404).send({ error: 'Boleto não encontrado' });
       }
 
       if (!isAllowedDocUrl(url)) {
-        return reply.code(400).send({ error: 'URL inv�lida ou n�o permitida.' });
+        return reply.code(400).send({ error: 'URL inválida ou não permitida.' });
       }
 
       const fileName = safeFilename(url.split('/').pop() || 'boleto.pdf');
@@ -441,7 +441,7 @@ export const boletoRoute: FastifyPluginAsync = async (fastify) => {
         });
       }
 
-      return reply.code(500).send({ error: 'Impress�o n�o configurada no servidor.' });
+      return reply.code(500).send({ error: 'Impressora não configurada no servidor.' });
     } catch (error) {
       printMetrics.error += 1;
       printMetrics.lastErrorAt = new Date().toISOString();
@@ -461,8 +461,8 @@ export const boletoRoute: FastifyPluginAsync = async (fastify) => {
     const body = request.body as { email?: string; url?: string; numeroFatura?: string | number };
     const { email, url, numeroFatura } = body ?? {};
 
-    if (!email || !url) return reply.code(400).send({ error: 'email e url s�o obrigat�rios' });
-    if (!fastify.mailer) return reply.code(500).send({ error: 'SMTP n�o configurado no servidor.' });
+    if (!email || !url) return reply.code(400).send({ error: 'email e url são obrigatórios' });
+    if (!fastify.mailer) return reply.code(500).send({ error: 'SMTP não configurado no servidor.' });
 
     const subject = `Boleto ${numeroFatura ? `- Fatura ${numeroFatura}` : ''}`.trim();
     const proxyLink = `${request.protocol}://${request.headers.host}/api/pdf?url=${encodeURIComponent(url)}`;
