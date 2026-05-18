@@ -81,7 +81,7 @@ jobs:
         env:
           SSH_KEY: ${{ secrets.HML_SSH_KEY }}
           SERVER_IP: ${{ secrets.HML_SSH_IP || secrets.HML_SSH_HOST || secrets.HML_HOST || '192.168.177.77' }}
-          SERVER_USER: ${{ secrets.HML_SSH_USER || secrets.HML_USER || 'root' }}
+          SERVER_USER: ${{ secrets.HML_SSH_USER || secrets.HML_USER || 'docker' }}
         run: |
           if [ -z "$SSH_KEY" ]; then
             echo "⚠️ HML_SSH_KEY não configurada em Actions Secrets. Pulando deploy físico de Homologação."
@@ -98,7 +98,7 @@ jobs:
           ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts 2>/dev/null
           
           # Executa atualização remota do docker-compose na branch homologacao
-          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" "cd /opt/totem-app && git fetch origin && git checkout homologacao && git pull && docker compose up -d --build"
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" "cd ~/totem-app && git fetch origin && git checkout homologacao && git pull && docker compose up -d --build"
           
           echo "🟢 Deploy de Homologação concluído com sucesso!"
 
