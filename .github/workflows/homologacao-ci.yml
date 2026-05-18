@@ -10,6 +10,9 @@ jobs:
   validate-and-pr:
     name: Validar Build e Criar PR para Prod
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
 
     steps:
       - name: 📂 Checkout do Repositório
