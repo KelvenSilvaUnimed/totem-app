@@ -160,9 +160,13 @@ export async function enviarTelemetriaPesquisa(
         labSlug = process.env.EXPO_PUBLIC_LAB_SLUG;
       }
 
-      // 2. Resolve a URL do Backend da Pesquisa:
-      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      if (!isLocal) {
+      // 2. Resolve a URL do Backend da Pesquisa dinamicamente:
+      const hostname = window.location.hostname;
+      if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        surveyApiBase = 'http://localhost:8082/api/pesquisas';
+      } else if (hostname === '192.168.177.77') {
+        surveyApiBase = 'http://192.168.177.77:8083/api/pesquisas';
+      } else {
         surveyApiBase = 'https://totemunimed.unimedpatosdeminas.com.br/api/pesquisas';
       }
     }
