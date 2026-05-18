@@ -53,15 +53,7 @@ jobs:
           username: 'docker'
           password: ${{ secrets.PROD_SSH_PASSWORD || '0177Dell038/' }}
           port: 22
-          source: |
-            docker-compose.yml
-            Backend/dist/
-            Backend/node_modules/
-            Backend/Dockerfile
-            Backend/package.json
-            FrontendTotem/dist/
-            FrontendTotem/Dockerfile
-            FrontendTotem/nginx.conf
+          source: "docker-compose.yml,Backend/dist,Backend/node_modules,Backend/Dockerfile,Backend/package.json,FrontendTotem/dist,FrontendTotem/Dockerfile,FrontendTotem/nginx.conf"
           target: "~/totem-app"
 
       # --- SSH DOCKER RESTART ---
