@@ -138,3 +138,50 @@ export async function fetchBoletoAsObjectUrl(remoteUrl: string): Promise<string>
 export function getPdfViewerUrl(remoteUrl: string): string {
   return `${BASE_URL}${ENDPOINTS.PDF_VIEWER}?url=${encodeURIComponent(remoteUrl)}&t=${Date.now()}`;
 }
+
+/**
+ * Registra uma ação de telemetria no backend da pesquisa (Ex: VISUALIZOU_BOLETO ou IMPRIMIU_BOLETO)
+ */
+export async function enviarTelemetriaPesquisa(
+  tipoAcao: 'VISUALIZOU_BOLETO' | 'IMPRIMIU_BOLETO' | 'INICIO' | 'SELECIONOU_AVALIACAO' | 'AVANCOU_PERGUNTAS' | 'FINALIZOU' | 'INATIVIDADE',
+  detalhe: string
+): Promise<void> {
+  try {
+    let labSlug = 'centro'; // default fallback
+    let surveyApiBase = 'http://localhost:8082/api/pesquisas';
+
+    if (typeof window !== 'undefined' && window.location) {
+      // 1. Resolve o Lab Slug da query param do totem principal (?lab=)
+      const params = new URLSearchParams(window.location.search);
+      const urlLab = params.get('lab');
+      if (urlLab) {
+        labSlug = urlLab;
+      } else if (process.env.EXPO_PUBLIC_LAB_SLUG) {
+        labSlug = process.env.EXPO_PUBLIC_LAB_SLUG;
+      }
+
+      // 2. Resolve a URL do Backend da Pesquisa:
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      if (!isLocal) {
+        surveyApiBase = 'https://totemunimed.unimedpatosdeminas.com.br/api/pesquisas';
+      }
+    }
+
+    const payload = {
+      etapa: 0,
+      tipoAcao,
+      detalhe,
+    };
+
+    console.log(`[Telemetria] Enviando evento ${tipoAcao} para ${surveyApiBase}/interacao/${labSlug}...`);
+    
+    // Dispara para o backend da pesquisa
+    await axios.post(`${surveyApiBase}/interacao/${labSlug}`, payload, {
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    console.log(`[Telemetria] Evento ${tipoAcao} registrado com sucesso!`);
+  } catch (error: any) {
+    console.error(`[Telemetria] Falha ao enviar telemetria (${tipoAcao}):`, error?.message || error);
+  }
+}

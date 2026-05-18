@@ -6,6 +6,7 @@ import {
   getPdfViewerUrl,
   imprimirBoleto,
   lookupByCpf,
+  enviarTelemetriaPesquisa,
 } from '@/services/api.service';
 import type { Beneficiario, BoletoResult, Fatura } from '@/services/api.types';
 import {
@@ -335,6 +336,8 @@ export function useTotemController(): TotemController {
     if (!rawUrl) { Alert.alert('Erro', 'Não foi possível abrir o boleto.'); return; }
     setBoletoModalUrl(rawUrl);
     setIsBoletoModalVisible(true);
+    // Envia telemetria de visualização de boleto
+    void enviarTelemetriaPesquisa('VISUALIZOU_BOLETO', 'Visualização da fatura solicitada pelo usuário no totem.');
   };
 
   const handleImprimir = async () => {
@@ -345,6 +348,8 @@ export function useTotemController(): TotemController {
         selectedFatura,
         boletoAtual.remoteUrl || (boletoAtual.kind === 'remote' ? boletoAtual.url : undefined),
       );
+      // Envia telemetria de impressão realizada com sucesso
+      void enviarTelemetriaPesquisa('IMPRIMIU_BOLETO', 'Comando de impressão de boleto enviado com sucesso.');
       Alert.alert('Sucesso', `Enviado para a impressora${result.printer ? ` (${result.printer})` : ''}.`);
     } catch {
       Alert.alert('Atenção', 'Não foi possível enviar para a impressora automaticamente. Você pode visualizar o boleto e imprimir manualmente.', [

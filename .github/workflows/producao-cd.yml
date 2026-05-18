@@ -1,0 +1,86 @@
+name: Produção CD & Deploy
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [closed]
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy-prod:
+    name: Compilar e Deploy em Produção
+    if: github.event_name == 'push' || (github.event.pull_request.merged == true)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📂 Checkout do Repositório
+        uses: actions/checkout@v4
+
+      - name: 🟢 Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      # --- BUILD BACKEND ---
+      - name: 🛠️ Instalar Dependências e Compilar (Backend)
+        run: |
+          cd Backend
+          npm ci
+          npm run build
+
+      # --- PRUNE BACKEND FOR PRODUCTION NODE_MODULES ---
+      - name: 📦 Preparar Dependências de Produção (Backend)
+        run: |
+          cd Backend
+          rm -rf node_modules
+          npm ci --omit=dev
+
+      # --- BUILD FRONTEND ---
+      - name: 🛠️ Instalar Dependências e Compilar (Frontend Totem)
+        run: |
+          cd FrontendTotem
+          npm ci
+          npm run build
+
+      # --- SCP TRANSFER TO PRODUCTION SERVER (GIT-FREE) ---
+      - name: 🚀 Transferir Builds, Módulos e Configurações via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: '192.168.177.77'
+          username: 'docker'
+          password: ${{ secrets.PROD_SSH_PASSWORD || '0177Dell038/' }}
+          port: 22
+          source: |
+            docker-compose.yml
+            Backend/dist/
+            Backend/node_modules/
+            Backend/Dockerfile
+            Backend/package.json
+            FrontendTotem/dist/
+            FrontendTotem/Dockerfile
+            FrontendTotem/nginx.conf
+          target: "~/totem-app"
+
+      # --- SSH DOCKER RESTART ---
+      - name: 🐳 Reiniciar Containers Docker no Servidor de Produção
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: '192.168.177.77'
+          username: 'docker'
+          password: ${{ secrets.PROD_SSH_PASSWORD || '0177Dell038/' }}
+          port: 22
+          script: |
+            echo "📡 Conectando ao servidor de Produção..."
+            cd ~/totem-app
+            
+            echo "🐳 Reconstruindo e reiniciando os containers..."
+            docker compose down
+            docker compose up -d --build
+            
+            echo "🟢 Deploy finalizado com absoluto sucesso!"
+
+
+

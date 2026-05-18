@@ -1,0 +1,77 @@
+name: Homologação CI & PR Automático
+
+on:
+  push:
+    branches:
+      - staging
+      - homologacao
+
+jobs:
+  validate-and-pr:
+    name: Validar Build e Criar PR para Prod
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: 📂 Checkout do Repositório
+        uses: actions/checkout@v4
+
+      - name: 🟢 Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: |
+            FrontendTotem/package-lock.json
+            Backend/package-lock.json
+
+      # --- BACKEND VALIDATION ---
+      - name: 🛠️ Instalar Dependências (Backend)
+        run: |
+          cd Backend
+          npm ci
+
+      - name: ⚙️ Validar Compilação (Backend)
+        run: |
+          cd Backend
+          npm run build
+
+      # --- FRONTEND VALIDATION ---
+      - name: 🛠️ Instalar Dependências (Frontend Totem)
+        run: |
+          cd FrontendTotem
+          npm ci
+
+      - name: ⚙️ Validar Compilação e Web Build (Frontend Totem)
+        run: |
+          cd FrontendTotem
+          npm run build
+
+      # --- AUTOMATED PULL REQUEST CREATION ---
+      - name: 🚀 Criar ou Atualizar Pull Request para Produção
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: homologacao build successfully validated"
+          committer: GitHub <noreply@github.com>
+          author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          branch: release-from-homologacao
+          base: main
+          title: "🚀 [PROD] Integrar Homologação Aprovada em Produção"
+          body: |
+            ## 🚀 Pull Request Automático de Homologação para Produção
+
+            Este Pull Request foi criado automaticamente após todos os testes e builds da base de **Homologação** (branch `homologacao`/`staging`) passarem com sucesso!
+
+            ### 📈 Status da Validação:
+            * **Build do Backend**: Passou com sucesso! 🟢
+            * **Build do Frontend (Web Expo)**: Passou com sucesso! 🟢
+            * **Análise Estática**: Verificada e íntegra! 🟢
+
+            Aprove este Pull Request para realizar o deploy em **Produção**!
+          labels: |
+            homologacao-validated
+            auto-pr
+

@@ -18,12 +18,20 @@ const normalizePrefix = (prefix?: string) => {
  * - API_URL (fallback)
  */
 const getDynamicBaseUrl = () => {
+  if (process.env.EXPO_PUBLIC_API_BASE_URL) return process.env.EXPO_PUBLIC_API_BASE_URL;
   if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
   if (process.env.API_URL) return process.env.API_URL;
   
-  // Se estiver rodando no navegador (web), usa o mesmo IP/domínio de onde carregou a página (sem porta fixa!).
-  // O seu nginx.conf já faz o proxy_pass de /api para o backend na porta 3000 internamente.
+  // Se estiver rodando no navegador (web), detectamos o ambiente de forma dinâmica
   if (typeof window !== 'undefined' && window.location && window.location.origin) {
+    const hostname = window.location.hostname;
+    
+    // Se for localhost (Dev local), direciona diretamente para a porta do backend local (3000)
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'http://localhost:3000';
+    }
+    
+    // Em produção (subdomínio da Unimed), usa a rota relativa (/api) pelo Nginx reverse-proxy
     return window.location.origin;
   }
   
