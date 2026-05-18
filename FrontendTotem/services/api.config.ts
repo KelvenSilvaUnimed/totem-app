@@ -18,6 +18,7 @@ const normalizePrefix = (prefix?: string) => {
  * - API_URL (fallback)
  */
 const getDynamicBaseUrl = () => {
+  if (process.env.EXPO_PUBLIC_API_BASE_URL) return process.env.EXPO_PUBLIC_API_BASE_URL;
   if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
   if (process.env.API_URL) return process.env.API_URL;
   
