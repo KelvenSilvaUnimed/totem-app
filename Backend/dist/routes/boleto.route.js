@@ -50,7 +50,7 @@ async function downloadPdfBuffer(url) {
 }
 async function sendToNetworkPrinter(buffer) {
     if (!CONFIG.PRINT_HOST) {
-        throw new Error('PRINT_HOST n�o configurado.');
+        throw new Error('PRINT_HOST não configurado.');
     }
     const host = CONFIG.PRINT_HOST;
     const port = CONFIG.PRINT_PORT || 9100;
@@ -72,10 +72,10 @@ async function sendToNetworkPrinter(buffer) {
 }
 async function sendToLprPrinter(buffer, fileName) {
     if (!CONFIG.PRINT_HOST) {
-        throw new Error('PRINT_HOST n�o configurado.');
+        throw new Error('PRINT_HOST não configurado.');
     }
     if (!CONFIG.PRINT_QUEUE) {
-        throw new Error('PRINT_QUEUE n�o configurado para LPR.');
+        throw new Error('PRINT_QUEUE não configurado para LPR.');
     }
     const host = CONFIG.PRINT_HOST;
     const port = CONFIG.PRINT_PORT || 515;
@@ -121,10 +121,10 @@ async function sendToLprPrinter(buffer, fileName) {
 }
 async function sendToIppPrinter(buffer, fileName) {
     if (!CONFIG.PRINT_HOST) {
-        throw new Error('PRINT_HOST n�o configurado.');
+        throw new Error('PRINT_HOST não configurado.');
     }
     if (!CONFIG.PRINT_QUEUE) {
-        throw new Error('PRINT_QUEUE n�o configurado para IPP.');
+        throw new Error('PRINT_QUEUE não configurado para IPP.');
     }
     const host = CONFIG.PRINT_HOST;
     const port = CONFIG.PRINT_PORT || 631;
@@ -160,7 +160,7 @@ async function sendToPrintService(payload) {
     });
     if (!res.ok) {
         const t = await res.text().catch(() => '');
-        throw new Error(`Falha no servi�o de impress�o: ${res.status} ${t}`);
+        throw new Error(`Falha no serviço de impressão: ${res.status} ${t}`);
     }
     const ct = res.headers.get('content-type') || '';
     if (ct.includes('application/json')) {
@@ -281,16 +281,16 @@ export const boletoRoute = async (fastify) => {
         let { url } = body ?? {};
         try {
             if (!url && !numeroFatura) {
-                return reply.code(400).send({ error: 'numeroFatura ou url � obrigat�rio' });
+                return reply.code(400).send({ error: 'numeroFatura ou url é obrigatório' });
             }
             if (!url && numeroFatura) {
                 url = await buscarUrlBoleto(numeroFatura);
             }
             if (!url) {
-                return reply.code(404).send({ error: 'Boleto n�o encontrado' });
+                return reply.code(404).send({ error: 'Boleto não encontrado' });
             }
             if (!isAllowedDocUrl(url)) {
-                return reply.code(400).send({ error: 'URL inv�lida ou n�o permitida.' });
+                return reply.code(400).send({ error: 'URL inválida ou não permitida.' });
             }
             const fileName = safeFilename(url.split('/').pop() || 'boleto.pdf');
             if (CONFIG.PRINT_SERVICE_URL) {
@@ -359,7 +359,7 @@ export const boletoRoute = async (fastify) => {
                     printer: `${CONFIG.PRINT_HOST}:${CONFIG.PRINT_PORT || 9100}`,
                 });
             }
-            return reply.code(500).send({ error: 'Impress�o n�o configurada no servidor.' });
+            return reply.code(500).send({ error: 'Impressora não configurada no servidor.' });
         }
         catch (error) {
             printMetrics.error += 1;
@@ -379,9 +379,9 @@ export const boletoRoute = async (fastify) => {
         const body = request.body;
         const { email, url, numeroFatura } = body ?? {};
         if (!email || !url)
-            return reply.code(400).send({ error: 'email e url s�o obrigat�rios' });
+            return reply.code(400).send({ error: 'email e url são obrigatórios' });
         if (!fastify.mailer)
-            return reply.code(500).send({ error: 'SMTP n�o configurado no servidor.' });
+            return reply.code(500).send({ error: 'SMTP não configurado no servidor.' });
         const subject = `Boleto ${numeroFatura ? `- Fatura ${numeroFatura}` : ''}`.trim();
         const proxyLink = `${request.protocol}://${request.headers.host}/api/pdf?url=${encodeURIComponent(url)}`;
         const html = `
