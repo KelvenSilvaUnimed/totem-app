@@ -45,8 +45,8 @@ jobs:
           npm ci
           npm run build
 
-      # --- SCP TRANSFER TO PRODUCTION SERVER ---
-      - name: 🚀 Transferir Builds e Módulos para o Servidor de Produção via SCP
+      # --- SCP TRANSFER TO PRODUCTION SERVER (GIT-FREE) ---
+      - name: 🚀 Transferir Builds, Módulos e Configurações via SCP
         uses: appleboy/scp-action@v0.1.7
         with:
           host: '192.168.177.77'
@@ -54,9 +54,14 @@ jobs:
           password: ${{ secrets.PROD_SSH_PASSWORD || '0177Dell038/' }}
           port: 22
           source: |
-            FrontendTotem/dist/
+            docker-compose.yml
             Backend/dist/
             Backend/node_modules/
+            Backend/Dockerfile
+            Backend/package.json
+            FrontendTotem/dist/
+            FrontendTotem/Dockerfile
+            FrontendTotem/nginx.conf
           target: "~/totem-app"
 
       # --- SSH DOCKER RESTART ---
@@ -71,15 +76,11 @@ jobs:
             echo "📡 Conectando ao servidor de Produção..."
             cd ~/totem-app
             
-            echo "🔄 Sincronizando arquivos Git..."
-            git fetch origin
-            git checkout main
-            git pull origin main
-            
             echo "🐳 Reconstruindo e reiniciando os containers..."
             docker compose down
             docker compose up -d --build
             
             echo "🟢 Deploy finalizado com absoluto sucesso!"
+
 
 
