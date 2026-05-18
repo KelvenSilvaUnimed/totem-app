@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js",
-    "build": "npx tsc -p tsconfig.json && npx cpx2 \"public/**/*\" dist/public"
+    "build": "npx tsc -p tsconfig.json && node -e \"const fs = require('fs'); if (fs.existsSync('public')) fs.cpSync('public', 'dist/public', { recursive: true });\""
   },
   "dependencies": {
     "@fastify/cors": "^11.1.0",
@@ -23,7 +23,6 @@
   "devDependencies": {
     "@types/node": "^22.7.5",
     "@types/nodemailer": "^6.4.23",
-    "cpx2": "^8.0.2",
     "esbuild": "^0.25.11",
     "ts-morph": "^22.0.0",
     "tsx": "^4.19.1",
